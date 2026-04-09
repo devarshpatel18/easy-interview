@@ -74,8 +74,8 @@ def extract_resume_text(file_path):
     return text.strip() if text.strip() else "No content extracted from resume"
 
 
-def generate_questions(resume_text, interview_type, skills, difficulty_level='medium'):
-    """Generate 10 interview questions based on resume, type, skills, and difficulty using Gemini."""
+def generate_questions(resume_text, interview_type, skills, difficulty_level='medium', count=10):
+    """Generate X interview questions based on resume, type, skills, and difficulty using Gemini."""
     skills_str = ', '.join(skills) if isinstance(skills, list) else skills
 
     difficulty_instructions = {
@@ -97,14 +97,14 @@ SELECTED SKILLS: {skills_str}
 DIFFICULTY LEVEL: {difficulty_level.upper()}
 
 RULES:
-- Generate exactly 10 questions.
+- Generate exactly {count} questions.
 - {diff_instruction}
 - AT LEAST 5 questions MUST directly reference the candidate's specific past projects, companies, or experiences mentioned in the resume. Example: "In your resume, you mentioned working on Project X using React. Can you explain how you handled state management?"
 - The remaining questions MUST deeply test the SELECTED SKILLS and be relevant to the candidate's stated level of experience.
 - DO NOT output common repeated questions like "What are your strengths?". Be highly creative, extremely specific, and unpredictable.
 - Mix theoretical and practical scenario-based questions.
 
-Return ONLY a valid JSON array of exactly 10 objects with this exact format (no markdown, no code blocks):
+Return ONLY a valid JSON array of exactly {count} objects with this exact format (no markdown, no code blocks):
 [
     {{"question": "Highly customized question here...", "ideal_answer": "Brief outline of what a good candidate should say..."}},
     {{"question": "Highly customized question here...", "ideal_answer": "Brief outline of what a good candidate should say..."}}
@@ -121,7 +121,7 @@ Return ONLY a valid JSON array of exactly 10 objects with this exact format (no 
             cleaned = re.sub(r'\s*```$', '', cleaned)
             questions = json.loads(cleaned)
             if isinstance(questions, list) and len(questions) >= 1:
-                return questions[:10]
+                return questions[:count]
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
             print(f"Raw response: {result[:500]}")

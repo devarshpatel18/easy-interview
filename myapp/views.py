@@ -436,37 +436,44 @@ def start_interview(request):
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
 
-    # Generate AI questions
-    skills_list = interview.skills_list
-    questions_data = generate_questions(resume_text, interview.interview_type, skills_list, interview.difficulty_level)
-
-    # Create Question objects linked to this interview
-    for idx, q_data in enumerate(questions_data):
-        Question.objects.create(
-            interview=interview,
-            question_text=q_data.get('question', f'Question {idx + 1}'),
-            ideal_answer=q_data.get('ideal_answer', ''),
-            order=idx + 1,
-        )
-
-    # === EXPERT FEATURE: Mix in expert questions from question bank ===
+    # 1. Fetch matching expert questions (Up to 5)
     import random as _random
     expert_qs = list(ExpertQuestion.objects.filter(
         skill__in=skills_list,
         difficulty=interview.difficulty_level,
-    ).exclude(created_by=request.user))
-    if expert_qs:
-        picked = _random.sample(expert_qs, min(2, len(expert_qs)))
-        current_order = interview.questions.count()
-        for eq in picked:
+    ))
+    _random.shuffle(expert_qs)
+    picked_expert_qs = expert_qs[:5]
+
+    # 2. Add picked expert questions as Question objects
+    for idx, eq in enumerate(picked_expert_qs):
+        Question.objects.create(
+            interview=interview,
+            question_text=eq.question_text,
+            ideal_answer=eq.ideal_answer or '',
+            order=idx + 1,
+        )
+
+    # 3. Generate remaining questions using AI (up to total 10)
+    needed_ai_count = 10 - len(picked_expert_qs)
+    if needed_ai_count > 0:
+        questions_data = generate_questions(
+            resume_text, 
+            interview.interview_type, 
+            skills_list, 
+            interview.difficulty_level,
+            count=needed_ai_count
+        )
+        
+        current_order = len(picked_expert_qs)
+        for idx, q_data in enumerate(questions_data):
             current_order += 1
             Question.objects.create(
                 interview=interview,
-                question_text=eq.question_text,
-                ideal_answer=eq.ideal_answer or '',
+                question_text=q_data.get('question', f'Question {current_order}'),
+                ideal_answer=q_data.get('ideal_answer', ''),
                 order=current_order,
             )
-    # === END EXPERT FEATURE ===
 
     return redirect("interview", interview_id=interview.id)
 
