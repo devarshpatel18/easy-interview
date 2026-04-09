@@ -96,12 +96,13 @@
                         <span style="font-size: 10px;">▼</span>
                     </button>
                 <div class="dropdown-menu">
+                    {% if request.user.is_expert or request.user.is_staff %}
+                    <a href="{% url 'expert_dashboard' %}" class="dropdown-item">📊 Expert Panel</a>
+                    <a href="{% url 'expert_questions' %}" class="dropdown-item">📝 Question Bank</a>
+                    {% else %}
                     <a href="{% url 'profile' %}" class="dropdown-item">👤 My Profile</a>
                     <a href="{% url 'settings' %}" class="dropdown-item">⚙️ Settings</a>
                     <a href="{% url 'history' %}" class="dropdown-item">📊 Interview History</a>
-                    {% if request.user.is_staff %}
-                    <div class="dropdown-divider"></div>
-                   
                     {% endif %}
                     <div class="dropdown-divider"></div>
                     <a href="{% url 'logout' %}" class="dropdown-item danger">🚪 Logout</a>
