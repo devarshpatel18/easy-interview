@@ -34,6 +34,19 @@
         </div>
 
         <div class="sidebar-nav">
+            {% if request.user.is_expert or request.user.is_staff %}
+            <!-- === EXPERT / ADMIN LINKS === -->
+            <a href="{% url 'expert_dashboard' %}" class="nav-link {% block nav_expert_dash %}{% endblock %}">
+                <span class="nav-icon">📊</span> Expert Dashboard
+            </a>
+            <a href="{% url 'expert_questions' %}" class="nav-link {% block nav_expert %}{% endblock %}">
+                <span class="nav-icon">📝</span> Question Bank
+            </a>
+            <a href="{% url 'live_rooms' %}" class="nav-link {% block nav_live %}{% endblock %}">
+                <span class="nav-icon">📹</span> Live Interview
+            </a>
+            {% else %}
+            <!-- === CANDIDATE LINKS === -->
             <a href="{% url 'home' %}" class="nav-link {% block nav_home %}{% endblock %}">
                 <span class="nav-icon">🏠</span> Dashboard
             </a>
@@ -49,19 +62,7 @@
             <a href="{% url 'start_interview' %}" class="nav-link {% block nav_interview %}{% endblock %}">
                 <span class="nav-icon">🎤</span> Start Interview
             </a>
-
-            <!-- === LIVE INTERVIEW FEATURE === -->
-            <a href="{% url 'live_rooms' %}" class="nav-link {% block nav_live %}{% endblock %}">
-                <span class="nav-icon">📹</span> Live Interview
-            </a>
-
-            <!-- === EXPERT FEATURE === -->
-            {% if request.user.is_expert or request.user.is_staff %}
-            <a href="{% url 'expert_questions' %}" class="nav-link {% block nav_expert %}{% endblock %}">
-                <span class="nav-icon">📝</span> Question Bank
-            </a>
             {% endif %}
-
         </div>
 
         <div class="sidebar-footer">
