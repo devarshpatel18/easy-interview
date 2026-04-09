@@ -518,7 +518,7 @@ a:hover { color: var(--accent-secondary); }
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
-    font-size: 14px;
+    font-size: 16px; /* Prevents iOS auto-zoom */
     transition: var(--transition);
     outline: none;
 }
@@ -1597,6 +1597,11 @@ a:hover { color: var(--accent-secondary); }
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 150;
+    backdrop-filter: blur(4px);
+}
+
+.sidebar-overlay.show {
+    display: block;
 }
 
 .sidebar-overlay.show { display: block; }
