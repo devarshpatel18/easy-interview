@@ -31,10 +31,12 @@
                         </linearGradient>
                     </defs>
                 </svg>
-                <h1>Easy Interview</h2>
+                <h1>Easy Interview</h1>
                 <p>Create your free account</p>
-                        <form method="POST" novalidate id="register-form">
-                {% csrf_token %}
+            </div>
+                    <form method="POST" novalidate id="register-form">
+
+                        {% csrf_token %}
 
                 <div class="form-group">
                     <label class="form-label">Username</label>

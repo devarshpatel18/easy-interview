@@ -80,6 +80,10 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.is_expert:
+            return redirect("expert_dashboard")
+        if request.user.is_staff:
+            return redirect("admin_dashboard")
         return redirect("home")
     if request.method == "POST":
         email = request.POST.get("email")
@@ -95,10 +99,12 @@ def login_view(request):
         if user_auth is not None:
             login(request, user_auth)
             messages.success(request, "Login successful!")
-            if user_auth.is_staff:
-                return redirect("admin_dashboard")
+            
+            # Smart Redirection based on priority
             if user_auth.is_expert:
                 return redirect("expert_dashboard")
+            if user_auth.is_staff:
+                return redirect("admin_dashboard")
             return redirect("home")
         else:
             messages.error(request, "Incorrect password. Please try again.")
@@ -1230,6 +1236,8 @@ def end_live_room(request, room_id):
 def expert_login_view(request):
     """Login page for experts."""
     if request.user.is_authenticated:
+        if request.user.is_staff and not request.user.is_expert:
+            return redirect("admin_dashboard")
         if request.user.is_expert or request.user.is_staff:
             return redirect("expert_dashboard")
         return redirect("home")
