@@ -1,0 +1,176 @@
+{% extends 'admin/admin_base.html' %}
+{% block nav_reports %}active{% endblock %}
+{% block page_title %}<span>Global Reports</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in" style="margin-bottom: 24px;">
+    <h1 class="page-title">Platform Reports 📝</h1>
+    <p class="page-subtitle">Monitor every interview conducted across the entire platform.</p>
+</div>
+
+<!-- Filters -->
+<div class="admin-card animate-in delay-1" style="padding: 24px; margin-bottom: 32px;">
+    <form id="filter-form" method="GET">
+        <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start;">
+            
+            <!-- Interview Type Filter -->
+            <div class="form-group" style="flex: 1; min-width: 300px;">
+                <label class="form-label" style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary); font-weight: 600;">🎯 Filter by Interview Type</label>
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                        <input type="radio" name="type" value="all" id="type-all" class="type-option" {% if type_filter == 'all' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="type-all" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">🌍</span>
+                            <span style="font-size: 13px; font-weight: 500;">All Types</span>
+                        </label>
+                    </div>
+                    <div style="flex: 1;">
+                        <input type="radio" name="type" value="technical" id="type-tech" class="type-option" {% if type_filter == 'technical' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="type-tech" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">💻</span>
+                            <span style="font-size: 13px; font-weight: 500;">Technical</span>
+                        </label>
+                    </div>
+                    <div style="flex: 1;">
+                        <input type="radio" name="type" value="hr" id="type-hr" class="type-option" {% if type_filter == 'hr' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="type-hr" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">🤝</span>
+                            <span style="font-size: 13px; font-weight: 500;">HR</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="form-group" style="flex: 1; min-width: 300px;">
+                <label class="form-label" style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary); font-weight: 600;">📊 Filter by Interview Status</label>
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                        <input type="radio" name="status" value="all" id="status-all" class="type-option" {% if status_filter == 'all' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="status-all" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">📋</span>
+                            <span style="font-size: 13px; font-weight: 500;">All Status</span>
+                        </label>
+                    </div>
+                    <div style="flex: 1;">
+                        <input type="radio" name="status" value="completed" id="status-done" class="type-option" {% if status_filter == 'completed' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="status-done" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">✅</span>
+                            <span style="font-size: 13px; font-weight: 500;">Completed</span>
+                        </label>
+                    </div>
+                    <div style="flex: 1;">
+                        <input type="radio" name="status" value="in_progress" id="status-pending" class="type-option" {% if status_filter == 'in_progress' %}checked{% endif %} onchange="this.form.submit()">
+                        <label for="status-pending" class="type-label" style="padding: 10px; flex-direction: row; gap: 8px; justify-content: center; height: 100%;">
+                            <span style="font-size: 16px;">⏳</span>
+                            <span style="font-size: 13px; font-weight: 500;">In Progress</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if type_filter != 'all' or status_filter != 'all' %}
+            <div style="margin-top: 20px; text-align: right;">
+                <a href="{% url 'admin_reports' %}" class="btn-outline-glass" style="padding: 8px 20px; font-size: 12px; border-color: #fbbf24; color: #fbbf24;">✕ Reset All Filters</a>
+            </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Reports Table -->
+<div class="admin-table-container animate-in delay-2">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Candidate</th>
+                <th>Interview Config</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0;">
+                            {{ report.user.username|make_list|first|upper }}
+                        </div>
+                        <a href="{% url 'view_user' report.user.id %}" style="font-weight: 600; color: #fbbf24; text-decoration: none; font-size: 14px;">{{ report.user.username }}</a>
+                    </div>
+                </td>
+                <td>
+                    <span class="history-type {% if report.interview_type == 'technical' %}type-technical{% else %}type-hr{% endif %}" style="margin: 0; padding: 2px 8px; font-size: 11px;">
+                        {{ report.get_interview_type_display }}
+                    </span>
+                    <span style="font-size: 12px; margin-left: 6px; color: {% if report.difficulty_level == 'easy' %}#34d399{% elif report.difficulty_level == 'hard' %}#ef4444{% else %}#fbbf24{% endif %};">
+                        {{ report.get_difficulty_level_display }}
+                    </span>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ report.skills_display }}">
+                        {{ report.skills_display }}
+                    </div>
+                </td>
+                <td style="font-size: 13px; color: var(--text-secondary);">
+                    {{ report.created_at|date:"M d, Y" }}
+                    <div style="color: var(--text-muted); font-size: 11px;">{{ report.created_at|date:"h:i A" }}</div>
+                </td>
+                <td>
+                    {% if report.is_completed %}
+                        <span style="color: #34d399; font-weight: 600; font-size: 13px;">✅ Done</span>
+                    {% else %}
+                        <span style="color: #f59e0b; font-weight: 600; font-size: 13px;">⏳ In Progress</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if report.is_completed %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 40px; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ report.score_percentage }}%; background: {% if report.score_percentage >= 70 %}#34d399{% elif report.score_percentage >= 40 %}#fbbf24{% else %}#ef4444{% endif %}; border-radius: 3px;"></div>
+                            </div>
+                            <span style="font-weight: 700; font-size: 14px;">{{ report.score_percentage }}%</span>
+                        </div>
+                    {% else %}
+                        <span style="color: var(--text-muted); font-size: 12px;">—</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                        {% if report.resume %}
+                            <a href="{% url 'admin_view_resume' report.id %}" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px;" target="_blank" title="View Resume">📄</a>
+                        {% endif %}
+                        {% if report.is_completed %}
+                            <a href="{% url 'result' report.id %}" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px; border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">View Report →</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    No interviews found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if reports.has_other_pages %}
+<div style="margin-top: 24px; display: flex; justify-content: center; gap: 8px;" class="animate-in delay-3">
+    {% if reports.has_previous %}
+        <a href="?page={{ reports.previous_page_number }}&type={{ type_filter }}&status={{ status_filter }}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px;">← Prev</a>
+    {% endif %}
+    <span class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; cursor: default; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">
+        Page {{ reports.number }} of {{ reports.paginator.num_pages }}
+    </span>
+    {% if reports.has_next %}
+        <a href="?page={{ reports.next_page_number }}&type={{ type_filter }}&status={{ status_filter }}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px;">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

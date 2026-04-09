@@ -1,0 +1,12 @@
+Django>=4.0
+requests
+python-docx
+PyPDF2
+PyMySQL
+sqlparse
+asgiref
+tzdata
+Pillow
+gunicorn
+whitenoise
+python-dotenv

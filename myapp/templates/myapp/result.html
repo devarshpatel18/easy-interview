@@ -1,0 +1,199 @@
+{% extends 'myapp/base.html' %}
+{% block page_title %}<span>Interview Report</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+
+    <!-- Score Header -->
+    <div class="result-header">
+        <h1 class="page-title">Interview Performance Report 📊</h1>
+        <p class="page-subtitle">
+            {{ interview.get_interview_type_display }} · {{ interview.skills_display }} · {{ interview.created_at|date:"M d, Y" }}
+        </p>
+
+        <!-- Animated Score Circle -->
+        <div class="score-circle">
+            <svg viewBox="0 0 160 160">
+                <defs>
+                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#6366f1" />
+                        <stop offset="100%" style="stop-color:#a855f7" />
+                    </linearGradient>
+                </defs>
+                <circle class="bg-circle" cx="80" cy="80" r="72"></circle>
+                <circle class="fg-circle" cx="80" cy="80" r="72"></circle>
+            </svg>
+            <div>
+                <div class="score-value">{{ interview.score_percentage }}%</div>
+                <div class="score-label">{{ interview.total_score|floatformat:1 }} / {{ interview.max_score|floatformat:0 }} points</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Cards Grid -->
+    <div class="report-grid">
+        <!-- Strengths -->
+        {% if interview.strengths %}
+        <div class="report-card strength-card animate-in delay-1">
+            <h3>✅ Strengths</h3>
+            <div class="content">{{ interview.strengths|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Areas of Improvement -->
+        {% if interview.areas_of_improvement %}
+        <div class="report-card improvement-card animate-in delay-2">
+            <h3>⚡ Areas of Improvement</h3>
+            <div class="content">{{ interview.areas_of_improvement|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+
+        <!-- AI Summary -->
+        {% if interview.ai_summary %}
+        <div class="report-card summary-card animate-in delay-3">
+            <h3>🤖 AI Feedback & Summary</h3>
+            <div class="content">{{ interview.ai_summary|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+
+        {% if not interview.strengths and not interview.areas_of_improvement and not interview.ai_summary %}
+        <div class="report-card summary-card animate-in delay-1" style="grid-column: 1 / -1;">
+            <h3>📝 Interview Summary</h3>
+            <div class="content">
+                <p>Your interview has been completed and scored.</p>
+                <p>Total Score: {{ interview.total_score|floatformat:1 }} / {{ interview.max_score|floatformat:0 }}</p>
+                <p>{{ interview.overall_feedback|default:"" }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Question Status Overview -->
+    {% if answers %}
+    <div class="answers-breakdown animate-in delay-4">
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">📋 Question Status Overview</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Each box represents a question. Hover to see the question number.</p>
+
+        <!-- Legend -->
+        <div style="display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #22c55e; font-weight: 700; font-size: 14px;">✓</span>
+                <span style="color: var(--text-secondary);">Correct</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700; font-size: 14px;">✗</span>
+                <span style="color: var(--text-secondary);">Incorrect</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-weight: 700; font-size: 14px;">—</span>
+                <span style="color: var(--text-secondary);">Not Attempted</span>
+            </div>
+        </div>
+
+        <!-- Status Boxes Grid -->
+        <div style="display: grid; grid-template-columns: repeat(5, 64px); gap: 16px; max-width: 400px; margin-bottom: 32px;">
+            {% for ans in answers %}
+            <div title="Question {{ forloop.counter }}" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 64px;
+                height: 72px;
+                border-radius: 12px;
+                font-weight: 700;
+                cursor: default;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                {% if ans.user_answer == '(No answer provided)' %}
+                    background: rgba(148, 163, 184, 0.12);
+                    border: 2px solid rgba(148, 163, 184, 0.25);
+                    color: #94a3b8;
+                {% elif ans.marks_obtained >= 5 %}
+                    background: rgba(16, 185, 129, 0.12);
+                    border: 2px solid rgba(16, 185, 129, 0.3);
+                    color: #22c55e;
+                {% else %}
+                    background: rgba(239, 68, 68, 0.12);
+                    border: 2px solid rgba(239, 68, 68, 0.3);
+                    color: #ef4444;
+                {% endif %}
+            " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.15)';"
+               onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                <span style="font-size: 22px; line-height: 1;">
+                    {% if ans.user_answer == '(No answer provided)' %}—{% elif ans.marks_obtained >= 5 %}✓{% else %}✗{% endif %}
+                </span>
+                <span style="font-size: 11px; margin-top: 4px; opacity: 0.8;">Q{{ forloop.counter }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Summary Stats -->
+        <div style="display: flex; gap: 16px; margin-top: 28px; flex-wrap: wrap;">
+            <div style="padding: 12px 20px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px; text-align: center; min-width: 100px;">
+                <div style="font-size: 22px; font-weight: 800; color: #22c55e;" id="correct-count">0</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Correct</div>
+            </div>
+            <div style="padding: 12px 20px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; text-align: center; min-width: 100px;">
+                <div style="font-size: 22px; font-weight: 800; color: #ef4444;" id="incorrect-count">0</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Incorrect</div>
+            </div>
+            <div style="padding: 12px 20px; background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; text-align: center; min-width: 100px;">
+                <div style="font-size: 22px; font-weight: 800; color: #94a3b8;" id="skipped-count">0</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Not Attempted</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="result-actions">
+        <a href="{% url 'retry_interview_from' interview.id %}" class="btn-primary-glow btn-lg">
+            🔄 Retry Interview
+        </a>
+        <a href="{% url 'history' %}" class="btn-outline-glass btn-lg">
+            📊 View All Results
+        </a>
+        <a href="{% url 'home' %}" class="btn-outline-glass btn-lg">
+            🏠 Back to Dashboard
+        </a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animate score circle on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const percentage = {{ interview.score_percentage }};
+        const circle = document.querySelector('.fg-circle');
+        if (circle) {
+            const circumference = 2 * Math.PI * 72;
+            const offset = circumference - (percentage / 100) * circumference;
+            setTimeout(function() {
+                circle.style.strokeDashoffset = offset;
+            }, 500);
+        }
+
+        // Count correct, incorrect, not-attempted from answer data
+        const answerData = [
+            {% for ans in answers %}
+            { answer: "{{ ans.user_answer|escapejs }}", score: {{ ans.marks_obtained }} },
+            {% endfor %}
+        ];
+        let correct = 0, incorrect = 0, skipped = 0;
+        answerData.forEach(function(a) {
+            if (a.answer === '(No answer provided)') {
+                skipped++;
+            } else if (a.score >= 5) {
+                correct++;
+            } else {
+                incorrect++;
+            }
+        });
+        document.getElementById('correct-count').textContent = correct;
+        document.getElementById('incorrect-count').textContent = incorrect;
+        document.getElementById('skipped-count').textContent = skipped;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'myapp/base.html' %}
+{% block nav_profile %}active{% endblock %}
+{% block page_title %}<span>My Profile</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        {% if user.profile_photo %}
+            <img src="{{ user.profile_photo.url }}" alt="Profile Photo" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-primary);">
+        {% else %}
+            <div class="profile-avatar-lg">{{ user.username|make_list|first|upper }}</div>
+        {% endif %}
+        <div class="profile-info">
+            <h2>{{ user.username }}</h2>
+            <p>📧 {{ user.email }}</p>
+            <p style="color: var(--text-muted); font-size: 13px;">📅 Member since {{ user.date_joined|date:"M d, Y" }}</p>
+        </div>
+    </div>
+
+    {% if best_interview %}
+    <!-- Best Performance -->
+    <div class="glass-card animate-in delay-2" style="margin-bottom: 32px; border-left: 3px solid var(--success);">
+        <h3 style="margin-bottom: 12px; font-size: 16px; font-weight: 700;">🏆 Best Performance</h3>
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <span class="history-type {% if best_interview.interview_type == 'technical' %}type-technical{% else %}type-hr{% endif %}">
+                {{ best_interview.get_interview_type_display }}
+            </span>
+            <span style="color: var(--text-muted); font-size: 14px;">{{ best_interview.skills_display|truncatewords:4 }}</span>
+            <span style="color: var(--text-muted); font-size: 14px;">{{ best_interview.completed_at|date:"M d, Y" }}</span>
+            <span style="font-weight: 700; font-size: 20px; color: var(--success);">{{ best_score|floatformat:0 }}%</span>
+            <a href="{% url 'result' best_interview.id %}" class="btn-outline-glass btn-sm" style="margin-left: auto;">View Report →</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Edit Profile -->
+    <div class="glass-card mt-4 animate-in delay-4">
+        <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700;">✏️ Update Profile</h3>
+        <form method="POST" action="{% url 'update_profile' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Profile Photo -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">📷 Profile Photo</label>
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+                    {% if user.profile_photo %}
+                        <img id="photo-preview" src="{{ user.profile_photo.url }}" alt="Current photo" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-glass);">
+                    {% else %}
+                        <div id="photo-preview" style="width: 60px; height: 60px; border-radius: 50%; background: var(--bg-glass); border: 2px dashed var(--border-glass); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 24px;">+</div>
+                    {% endif %}
+                    <div style="flex: 1;">
+                        <input type="file" class="form-control" name="profile_photo" id="profile-photo-input" accept="image/*" style="font-size: 13px;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">JPG, PNG or GIF. Max 2MB.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" value="{{ user.username }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email (Read-only)</label>
+                <input type="email" class="form-control" name="email" value="{{ user.email }}" readonly style="background: rgba(255, 255, 255, 0.05); cursor: not-allowed; opacity: 0.7;">
+            </div>
+
+            <!-- Password Change Section -->
+            <div style="border-top: 1px solid var(--border-glass); margin-top: 24px; padding-top: 20px;">
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--text-secondary);">🔒 Change Password <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(leave blank to keep current)</span></h4>
+
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" class="form-control" name="current_password" id="current-password" placeholder="Enter current password" style="padding-right: 40px;">
+                    <button type="button" onclick="togglePwd('current-password')" style="position: absolute; right: 12px; top: 36px; background: none; border: none; cursor: pointer; font-size: 16px;">
+                        <span id="current-password-icon">👁️</span>
+                    </button>
+                </div>
+
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" name="new_password" id="new-password" placeholder="Enter new password" style="padding-right: 40px;" oninput="checkPwdStrength(this.value)">
+                    <button type="button" onclick="togglePwd('new-password')" style="position: absolute; right: 12px; top: 36px; background: none; border: none; cursor: pointer; font-size: 16px;">
+                        <span id="new-password-icon">👁️</span>
+                    </button>
+                    <div id="pwd-requirements" style="margin-top: 8px; font-size: 12px; line-height: 1.8; display: none;">
+                        <div id="req-upper" style="color: #ef4444;">✗ At least one uppercase letter</div>
+                        <div id="req-digit" style="color: #ef4444;">✗ At least one digit</div>
+                        <div id="req-special" style="color: #ef4444;">✗ At least one special character (!@#$%^&* etc.)</div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" name="confirm_password" id="confirm-password" placeholder="Confirm new password" style="padding-right: 40px;">
+                    <button type="button" onclick="togglePwd('confirm-password')" style="position: absolute; right: 12px; top: 36px; background: none; border: none; cursor: pointer; font-size: 16px;">
+                        <span id="confirm-password-icon">👁️</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary-glow" style="margin-top: 8px;">Save Changes</button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function togglePwd(id) {
+        const input = document.getElementById(id);
+        const icon = document.getElementById(id + '-icon');
+        if (input.type === 'password') { input.type = 'text'; icon.innerText = '🙈'; }
+        else { input.type = 'password'; icon.innerText = '👁️'; }
+    }
+
+    function checkPwdStrength(password) {
+        const box = document.getElementById('pwd-requirements');
+        box.style.display = password.length > 0 ? 'block' : 'none';
+        const upper = /[A-Z]/.test(password), digit = /[0-9]/.test(password);
+        const special = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+        document.getElementById('req-upper').style.color = upper ? '#22c55e' : '#ef4444';
+        document.getElementById('req-upper').innerText = (upper ? '✓' : '✗') + ' At least one uppercase letter';
+        document.getElementById('req-digit').style.color = digit ? '#22c55e' : '#ef4444';
+        document.getElementById('req-digit').innerText = (digit ? '✓' : '✗') + ' At least one digit';
+        document.getElementById('req-special').style.color = special ? '#22c55e' : '#ef4444';
+        document.getElementById('req-special').innerText = (special ? '✓' : '✗') + ' At least one special character (!@#$%^&* etc.)';
+    }
+
+    // Photo preview
+    document.getElementById('profile-photo-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Photo must be under 2MB');
+                e.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const preview = document.getElementById('photo-preview');
+                if (preview.tagName === 'IMG') {
+                    preview.src = ev.target.result;
+                } else {
+                    const img = document.createElement('img');
+                    img.id = 'photo-preview';
+                    img.src = ev.target.result;
+                    img.style.cssText = 'width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--border-glass);';
+                    preview.parentNode.replaceChild(img, preview);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+{% endblock %}

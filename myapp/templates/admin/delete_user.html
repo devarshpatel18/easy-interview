@@ -1,0 +1,17 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+
+<h3>Delete User</h3>
+
+<div class="card p-4 shadow">
+    <p>This action cannot be undone.</p>
+    <p>Delete <strong>{{ user_obj.username }}</strong>?</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <button class="btn btn-danger">Confirm Delete</button>
+        <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,164 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Easy Interview{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+</head>
+<body>
+
+<div id="wrapper">
+
+    <!-- SIDEBAR OVERLAY (Mobile) -->
+    <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('show');"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 22px; height: 22px;">
+                <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#6366f1" />
+                        <stop offset="1" stop-color="#a855f7" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            <h2>Easy Interview</h2>
+            <span>AI Powered</span>
+        </div>
+
+        <div class="sidebar-nav">
+            <a href="{% url 'home' %}" class="nav-link {% block nav_home %}{% endblock %}">
+                <span class="nav-icon">🏠</span> Dashboard
+            </a>
+            <a href="{% url 'resume' %}" class="nav-link {% block nav_resume %}{% endblock %}">
+                <span class="nav-icon">📤</span> Upload Resume
+            </a>
+            <a href="{% url 'view_resume' %}" class="nav-link {% block nav_view_resume %}{% endblock %}">
+                <span class="nav-icon">👀</span> View Resume
+            </a>
+            <a href="{% url 'configure_interview' %}" class="nav-link {% block nav_configure %}{% endblock %}">
+                <span class="nav-icon">🎯</span> Configure Interview
+            </a>
+            <a href="{% url 'start_interview' %}" class="nav-link {% block nav_interview %}{% endblock %}">
+                <span class="nav-icon">🎤</span> Start Interview
+            </a>
+
+            <!-- === LIVE INTERVIEW FEATURE === -->
+            <a href="{% url 'live_rooms' %}" class="nav-link {% block nav_live %}{% endblock %}">
+                <span class="nav-icon">📹</span> Live Interview
+            </a>
+
+            <!-- === EXPERT FEATURE === -->
+            {% if request.user.is_expert or request.user.is_staff %}
+            <a href="{% url 'expert_questions' %}" class="nav-link {% block nav_expert %}{% endblock %}">
+                <span class="nav-icon">📝</span> Question Bank
+            </a>
+            {% endif %}
+
+        </div>
+
+        <div class="sidebar-footer">
+        </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('show');">☰</button>
+                <div class="topbar-title">
+                    {% block page_title %}<span>Dashboard</span>{% endblock %}
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <button id="theme-toggle-dashboard" class="btn-outline-glass" style="padding: 6px; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; line-height: 1; border: none; cursor: pointer; background: var(--bg-glass);">
+                    ☀️
+                </button>
+                <div class="profile-dropdown">
+                    <button class="profile-btn">
+                        {% if request.user.profile_photo %}
+                            <img src="{{ request.user.profile_photo.url }}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary);">
+                        {% else %}
+                            <div class="profile-avatar">{{ request.user.username|make_list|first|upper }}</div>
+                        {% endif %}
+                        <span>{{ request.user.username|default:"User" }}</span>
+                        <span style="font-size: 10px;">▼</span>
+                    </button>
+                <div class="dropdown-menu">
+                    <a href="{% url 'profile' %}" class="dropdown-item">👤 My Profile</a>
+                    <a href="{% url 'settings' %}" class="dropdown-item">⚙️ Settings</a>
+                    <a href="{% url 'history' %}" class="dropdown-item">📊 Interview History</a>
+                    {% if request.user.is_staff %}
+                    <div class="dropdown-divider"></div>
+                   
+                    {% endif %}
+                    <div class="dropdown-divider"></div>
+                    <a href="{% url 'logout' %}" class="dropdown-item danger">🚪 Logout</a>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <!-- MESSAGES -->
+        {% if messages %}
+            <div class="messages-container" style="padding: 0 32px; padding-top: 16px;">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{% static 'js/main.js' %}"></script>
+<script>
+    const dashThemeToggle = document.getElementById('theme-toggle-dashboard');
+    function updateDashThemeIcon(isLight) {
+        if(dashThemeToggle) dashThemeToggle.innerText = isLight ? '🌙' : '☀️';
+    }
+    const isLightThemeDash = localStorage.getItem('theme') === 'light';
+    if (isLightThemeDash) {
+        document.body.classList.add('light-theme');
+        updateDashThemeIcon(true);
+    }
+    if (dashThemeToggle) {
+        dashThemeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateDashThemeIcon(isLight);
+        });
+    }
+    
+    // Auto disappear alerts
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.transition = 'opacity 0.5s ease';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 4000);
+</script>
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

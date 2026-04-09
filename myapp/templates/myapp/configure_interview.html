@@ -1,0 +1,124 @@
+{% extends 'myapp/base.html' %}
+{% block nav_resume %}active{% endblock %}
+{% block page_title %}<span>Configure Interview</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <div class="text-center" style="margin-bottom: 32px;">
+        <h1 class="page-title">Configure Interview 🎯</h1>
+        <p class="page-subtitle">Select your interview preferences to get personalized AI-powered questions.</p>
+    </div>
+</div>
+
+<div class="glass-card animate-in delay-1">
+    <form method="POST">
+        {% csrf_token %}
+
+        {% if has_new_upload %}
+        <div style="padding: 14px 20px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-md); margin-bottom: 24px; font-size: 14px; color: var(--accent-primary);">
+            ✨ New Resume Uploaded Successfully! Now configure your interview details.
+        </div>
+        {% elif latest_resume %}
+        <div style="padding: 14px 20px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); margin-bottom: 24px; font-size: 14px; color: var(--success);">
+            📎 Using Existing Resume: <strong>{{ latest_resume.resume.name|cut:"resumes/" }}</strong>
+        </div>
+        {% endif %}
+
+
+        <!-- Difficulty Level -->
+        <div class="form-group" style="margin-bottom: 28px;">
+            <label class="form-label" style="font-size: 15px; margin-bottom: 12px;">📊 Select Difficulty Level</label>
+            <div class="type-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div>
+                    <input type="radio" name="difficulty_level" value="easy" id="diff-easy" class="type-option" required>
+                    <label for="diff-easy" class="type-label" style="border-color: rgba(16, 185, 129, 0.3);">
+                        <span class="type-icon">🟢</span>
+                        <h4>Easy</h4>
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" name="difficulty_level" value="medium" id="diff-medium" class="type-option" checked>
+                    <label for="diff-medium" class="type-label" style="border-color: rgba(245, 158, 11, 0.3);">
+                        <span class="type-icon">🟡</span>
+                        <h4>Medium</h4>
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" name="difficulty_level" value="hard" id="diff-hard" class="type-option">
+                    <label for="diff-hard" class="type-label" style="border-color: rgba(239, 68, 68, 0.3);">
+                        <span class="type-icon">🔴</span>
+                        <h4>Hard</h4>
+                    </label>
+                </div>
+            </div>
+        </div>
+         <!-- Interview Type -->
+        <div class="form-group" style="margin-bottom: 28px;">
+            <label class="form-label" style="font-size: 15px; margin-bottom: 12px;">🎯 Select Interview Type</label>
+            <div class="type-grid">
+                <div>
+                    <input type="radio" name="interview_type" value="technical" id="type-tech" class="type-option" required>
+                    <label for="type-tech" class="type-label">
+                        <span class="type-icon">💻</span>
+                        <h4>Technical Interview</h4>
+                        <p>Coding, algorithms, problem-solving</p>
+                    </label>
+                </div>
+
+                <div>
+                    <input type="radio" name="interview_type" value="hr" id="type-hr" class="type-option" required>
+                    <label for="type-hr" class="type-label">
+                        <span class="type-icon">🤝</span>
+                        <h4>HR Interview</h4>
+                        <p>Behavioral, soft skills, career goals</p>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Selection -->
+        <div id="skills-section" class="form-group" style="margin-bottom: 32px;">
+            <label class="form-label" style="font-size: 15px; margin-bottom: 12px;">🛠️ Select Skills / Technologies</label>
+            <div class="skills-grid">
+                {% for value, label in skill_choices %}
+                <div>
+                    <input type="checkbox" name="skills" value="{{ value }}" id="skill-{{ value }}" class="skill-checkbox">
+                    <label for="skill-{{ value }}" class="skill-label">{{ label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="text-center" style="display: flex; gap: 16px; justify-content: center;">
+            <a href="{% url 'resume' %}" class="btn-outline-glass btn-lg">← Back to Upload</a>
+            <button type="submit" class="btn-primary-glow btn-lg" style="min-width: 280px;">
+                ✅ Save Configuration →
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const skillsSection = document.getElementById('skills-section');
+    const typeTech = document.getElementById('type-tech');
+    const typeHr = document.getElementById('type-hr');
+
+    function toggleSkills() {
+        if (typeHr && typeHr.checked) {
+            skillsSection.style.display = 'none';
+        } else {
+            skillsSection.style.display = 'block';
+        }
+    }
+
+    if (typeTech && typeHr) {
+        typeTech.addEventListener('change', toggleSkills);
+        typeHr.addEventListener('change', toggleSkills);
+        // Initial check
+        toggleSkills();
+    }
+});
+</script>
+{% endblock %}

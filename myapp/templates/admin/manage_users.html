@@ -1,0 +1,204 @@
+{% extends 'admin/admin_base.html' %}
+{% block nav_users %}active{% endblock %}
+{% block page_title %}<span>Manage Users</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title">Manage Candidates 👥</h1>
+        <p class="page-subtitle">Search, filter, and manage all platform users.</p>
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<style>
+    .status-toggle-group {
+        display: flex;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 4px;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .status-radio {
+        display: none;
+    }
+
+    .status-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: calc(var(--radius-md) - 4px);
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .status-label:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+    }
+
+    .status-radio:checked + .status-label {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #fbbf24;
+        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.1);
+    }
+
+    .status-icon {
+        font-size: 14px;
+        opacity: 0.8;
+    }
+
+    .search-container {
+        display: flex;
+        flex: 1;
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+        .admin-filters-form {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        .status-toggle-group {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .status-label {
+            flex: 1;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="admin-card animate-in delay-1" style="padding: 16px 24px; margin-bottom: 24px;">
+    <form method="GET" class="admin-filters-form" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" name="q" value="{{ search }}" placeholder="Search by username or email..." class="form-input" style="width: 100%; background: rgba(0,0,0,0.3); border-color: rgba(245, 158, 11, 0.2); padding: 12px 16px 12px 42px; border-radius: var(--radius-md);">
+        </div>
+
+        <div class="status-toggle-group">
+            <input type="radio" id="status-all" name="status" value="all" {% if status_filter == 'all' %}checked{% endif %} class="status-radio" onchange="this.form.submit()">
+            <label for="status-all" class="status-label">
+                <span class="status-icon">👥</span> All Status
+            </label>
+
+            <input type="radio" id="status-active" name="status" value="active" {% if status_filter == 'active' %}checked{% endif %} class="status-radio" onchange="this.form.submit()">
+            <label for="status-active" class="status-label">
+                <span class="status-icon">🟢</span> Active
+            </label>
+
+            <input type="radio" id="status-blocked" name="status" value="blocked" {% if status_filter == 'blocked' %}checked{% endif %} class="status-radio" onchange="this.form.submit()">
+            <label for="status-blocked" class="status-label">
+                <span class="status-icon">🚫</span> Blocked
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn-primary-glow" style="background: var(--admin-accent); padding: 10px 20px; border-radius: var(--radius-md); font-size: 13px;">Filter</button>
+            {% if search or status_filter != 'all' %}
+                <a href="{% url 'manage_users' %}" class="btn-outline-glass" style="padding: 10px 20px; border-radius: var(--radius-md); font-size: 13px;">✕ Clear</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Users Table -->
+<div class="admin-table-container animate-in delay-2">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Joined</th>
+                <th>Interviews</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
+                            {{ u.username|make_list|first|upper }}
+                        </div>
+                        <a href="{% url 'view_user' u.id %}" style="font-weight: 600; color: var(--text-primary); text-decoration: none;">{{ u.username }}</a>
+                    </div>
+                </td>
+                <td style="color: var(--text-secondary);">{{ u.email|default:"—" }}</td>
+                <td style="color: var(--text-secondary); font-size: 13px;">{{ u.date_joined|date:"M d, Y" }}</td>
+                <td style="color: var(--text-secondary); font-size: 13px;">—</td>
+                <td>
+                    {% if u.is_superuser or u.is_staff %}
+                        <span class="badge-admin">👑 Staff</span>
+                    {% elif u.is_active %}
+                        <span class="badge-active">● Active</span>
+                    {% else %}
+                        <span class="badge-blocked">🚫 Blocked</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <a href="{% url 'view_user' u.id %}" class="btn-admin-action" title="View Profile">👁️</a>
+                        {% if not u.is_superuser %}
+                            <form method="POST" action="{% url 'block_user' u.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-admin-action warn" title="{% if u.is_active %}Block{% else %}Unblock{% endif %}" onclick="return confirm('Change this user\'s status?');">
+                                    {% if u.is_active %}🚫{% else %}✅{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST" action="{% url 'delete_user' u.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-admin-action danger" title="Delete" onclick="return confirm('Delete this user permanently?');">🗑️</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    {% if search %}No users found matching "{{ search }}".{% else %}No users on the platform.{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if users.has_other_pages %}
+<div style="margin-top: 24px; display: flex; justify-content: center; gap: 8px;" class="animate-in delay-3">
+    {% if users.has_previous %}
+        <a href="?page={{ users.previous_page_number }}&q={{ search }}&status={{ status_filter }}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px;">← Prev</a>
+    {% endif %}
+    <span class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; cursor: default; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">
+        Page {{ users.number }} of {{ users.paginator.num_pages }}
+    </span>
+    {% if users.has_next %}
+        <a href="?page={{ users.next_page_number }}&q={{ search }}&status={{ status_filter }}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px;">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

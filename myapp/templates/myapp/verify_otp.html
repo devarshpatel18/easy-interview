@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP | Easy Interview</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+</head>
+<body>
+
+<button id="theme-toggle" class="btn-outline-glass" style="position: absolute; top: 1rem; right: 1rem; padding: 0.4rem 0.8rem; border-radius: 50%; font-size: 1.2rem; cursor: pointer; border: none; background: var(--bg-glass); z-index: 1000;">☀️</button>
+
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card animate-in">
+            <div class="auth-logo">
+                <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
+                    <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                    <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Verify Code</h1>
+                <p>Enter the 6-digit code sent to<br><strong>{{ email }}</strong></p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div id="timer-display" style="text-align: center; margin-bottom: 1rem;">
+                <span style="font-size: 14px; color: var(--text-muted);">Code expires in </span>
+                <span id="countdown" style="font-size: 18px; font-weight: 700; color: #6366f1;"></span>
+            </div>
+
+            <form method="POST" id="otp-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label">Verification Code</label>
+                    <input type="text" class="form-control" name="otp" maxlength="6" placeholder="000000" style="text-align: center; letter-spacing: 8px; font-size: 24px; font-weight: 700;" required>
+                </div>
+                <button type="submit" class="btn-primary-glow btn-block btn-lg">
+                    Verify Code →
+                </button>
+            </form>
+
+            <div id="expired-msg" style="display: none; text-align: center; margin-top: 1rem;">
+                <div class="alert alert-error" style="margin-bottom: 1rem;">⏰ Your verification code has expired.</div>
+                <a href="{% url 'forgot_password' %}" class="btn-primary-glow btn-block btn-lg" style="text-decoration: none; display: inline-block; padding: 12px 24px;">
+                    Resend Code →
+                </a>
+            </div>
+
+            <div class="auth-footer">
+                Back to <a href="{% url 'forgot_password' %}">Email Entry</a>
+            </div>
+
+            <script>
+                (function() {
+                    let remaining = {{ remaining_seconds }};
+                    const countdownEl = document.getElementById('countdown');
+                    const timerDisplay = document.getElementById('timer-display');
+                    const otpForm = document.getElementById('otp-form');
+                    const expiredMsg = document.getElementById('expired-msg');
+
+                    function formatTime(s) {
+                        const m = Math.floor(s / 60);
+                        const sec = s % 60;
+                        return m + ':' + (sec < 10 ? '0' : '') + sec;
+                    }
+
+                    function tick() {
+                        if (remaining <= 0) {
+                            timerDisplay.style.display = 'none';
+                            otpForm.style.display = 'none';
+                            expiredMsg.style.display = 'block';
+                            return;
+                        }
+                        countdownEl.textContent = formatTime(remaining);
+                        if (remaining <= 30) {
+                            countdownEl.style.color = '#ef4444';
+                        }
+                        remaining--;
+                        setTimeout(tick, 1000);
+                    }
+                    tick();
+                })();
+            </script>
+        </div>
+    </div>
+</div>
+
+<script>
+    const themeToggle = document.getElementById('theme-toggle');
+    function updateThemeIcon(isLight) {
+        if(themeToggle) themeToggle.innerText = isLight ? '🌙' : '☀️';
+    }
+    const isLightTheme = localStorage.getItem('theme') === 'light';
+    if (isLightTheme) {
+        document.body.classList.add('light-theme');
+        updateThemeIcon(true);
+    }
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateThemeIcon(isLight);
+        });
+    }
+</script>
+</body>
+</html>

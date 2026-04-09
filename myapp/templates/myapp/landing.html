@@ -1,0 +1,381 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Interview - AI Powered Mock Interviews</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        /* Navbar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            margin-left: 2rem;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline {
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+        }
+        .btn-outline:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+        }
+        
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(15,23,42,0) 70%);
+            z-index: -1;
+        }
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            line-height: 1.1;
+        }
+        .hero h1 span {
+            background: linear-gradient(to right, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 2.5rem;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        .hero-buttons .btn {
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Services / Features */
+        .services {
+            padding: 5rem 5%;
+            background: #0b1120;
+        }
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 2.5rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+        .card p {
+            color: var(--text-muted);
+        }
+
+        /* About Section */
+        .about {
+            padding: 5rem 5%;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .about p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-muted);
+            background: var(--dark);
+        }
+        body.light-theme {
+            --dark: #f8fafc;
+            --light: #0f172a;
+            --text-muted: #64748b;
+        }
+        body.light-theme nav {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        body.light-theme .services {
+            background: #e2e8f0;
+        }
+        body.light-theme .card {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        body.light-theme .card h3 {
+            color: var(--light);
+        }
+        body.light-theme .btn-outline {
+            border: 1px solid rgba(0,0,0,0.2);
+            color: var(--light);
+        }
+
+        /* ===== LANDING RESPONSIVE ===== */
+
+        /* Hamburger menu button */
+        .mobile-nav-toggle {
+            display: none;
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: var(--light);
+            font-size: 1.5rem;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 1rem 4%;
+                flex-wrap: wrap;
+            }
+
+            .mobile-nav-toggle { display: block; }
+
+            .nav-links {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.75rem;
+                padding-top: 1rem;
+            }
+
+            .nav-links.show { display: flex; }
+
+            .nav-links a { margin-left: 0; }
+
+            .hero h1 { font-size: 2.2rem; }
+            .hero p { font-size: 1rem; }
+            .hero-buttons { flex-direction: column; align-items: center; }
+            .hero-buttons .btn { width: 100%; max-width: 300px; text-align: center; }
+
+            .grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .section-title { font-size: 1.8rem; margin-bottom: 2rem; }
+            .card { padding: 2rem; }
+            .about p { font-size: 1rem; }
+            .services, .about { padding: 3rem 5%; }
+        }
+
+        @media (max-width: 480px) {
+            nav { padding: 0.8rem 3%; }
+            .logo { font-size: 1.2rem; }
+
+            .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.9rem; max-width: 100%; }
+            .hero-buttons .btn { padding: 0.8rem 2rem; font-size: 0.95rem; }
+
+            .section-title { font-size: 1.5rem; }
+            .card { padding: 1.5rem; border-radius: 14px; }
+            .card-icon { font-size: 2rem; margin-bottom: 1rem; }
+            .card h3 { font-size: 1.2rem; }
+            .card p { font-size: 0.9rem; }
+
+            .about p { font-size: 0.9rem; }
+            .services, .about { padding: 2.5rem 4%; }
+            footer { padding: 1.5rem; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">
+            <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; margin-bottom: 0; margin-right: 8px;">
+                <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#6366f1" />
+                        <stop offset="1" stop-color="#a855f7" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            Easy Interview
+        </div>
+        <button class="mobile-nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('show')">☰</button>
+        <div class="nav-links">
+            <button id="theme-toggle" class="btn-outline-glass" style="padding: 0.4rem 0.8rem; border-radius: 50%; font-size: 1.2rem; cursor: pointer; border: none; background: transparent; vertical-align: middle;">☀️</button>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'home' %}" class="btn btn-primary">Go to Dashboard →</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline">Sign In</a>
+                <a href="{% url 'register' %}" class="btn btn-primary">Create Account</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>Ace Your Next Interview with <br><span>AI Precision</span></h1>
+        <p>Upload your resume, select your skills, and experience a hyper-realistic mock interview tailored just for you. Get detailed feedback and improve your chances of getting hired.</p>
+        <div class="hero-buttons">
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'home' %}" class="btn btn-primary">Go to Dashboard →</a>
+            {% else %}
+                <a href="{% url 'register' %}" class="btn btn-primary">Get Started for Free</a>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="services">
+        <h2 class="section-title">Our Services</h2>
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">📄</div>
+                <h3>Resume Analysis</h3>
+                <p>Our AI scans your resume and generates highly relevant questions tailored precisely to your background and experience.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧠</div>
+                <h3>Technical & HR Mock Interviews</h3>
+                <p>Practice both behavioral (HR) and deep technical rounds across various difficulty levels and modern tech stacks.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Detailed AI Feedback</h3>
+                <p>Receive comprehensive performance reports, highlighting your strengths and areas needing improvement with constructive suggestions.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="about">
+        <h2 class="section-title">About Easy Interview</h2>
+        <p>Easy Interview is designed to bridge the gap between preparation and execution. We noticed that many talented individuals struggle with interviews due to a lack of realistic practice. By leveraging advanced generative AI, we simulate the environment of top-tier company interviews to help you build confidence, refine your answers, and land your dream job.</p>
+    </section>
+
+    <footer>
+        &copy; 2026 Easy Interview. All rights reserved.
+    </footer>
+
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        function updateThemeIcon(isLight) {
+            themeToggle.innerText = isLight ? '🌙' : '☀️';
+        }
+
+        const isLightTheme = localStorage.getItem('theme') === 'light';
+        if (isLightTheme) {
+            document.body.classList.add('light-theme');
+            updateThemeIcon(true);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateThemeIcon(isLight);
+        });
+    </script>
+</body>
+</html>

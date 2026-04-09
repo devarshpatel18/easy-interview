@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin | Easy Interview{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=6">
+</head>
+<body class="admin-body">
+
+<div id="wrapper">
+
+    <!-- SIDEBAR OVERLAY (Mobile) -->
+    <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('show');"></div>
+
+    <!-- ADMIN SIDEBAR -->
+    <div class="sidebar admin-sidebar">
+        <div class="sidebar-logo">
+            <h2 style="color: #6366f1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
+                    <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                    <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                Easy Interview
+            </h2>
+            <span style="color: rgba(99, 102, 241, 0.7);">👑 Admin Panel</span>
+        </div>
+
+        <div class="sidebar-nav">
+            <a href="{% url 'admin_dashboard' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
+                <span class="nav-icon">📊</span> Dashboard
+            </a>
+            <a href="{% url 'manage_users' %}" class="nav-link {% block nav_users %}{% endblock %}">
+                <span class="nav-icon">👥</span> Manage Users
+            </a>
+            <a href="{% url 'admin_reports' %}" class="nav-link {% block nav_reports %}{% endblock %}">
+                <span class="nav-icon">📝</span> Global Reports
+            </a>
+           
+        </div>
+
+        <!-- Sidebar Spacer (Removed Logout from here) -->
+        <div style="margin-top: auto; padding: 20px;">
+        </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('show');">☰</button>
+                <div class="topbar-title">
+                    {% block page_title %}<span>Admin Dashboard</span>{% endblock %}
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                
+                <!-- Theme Toggle (Premium Style) -->
+                <button id="theme-toggle-admin" class="btn-outline-glass" style="padding: 0; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--bg-glass); border-color: var(--border-glass);">
+                    ☀️
+                </button>
+
+                <!-- Admin Profile Dropdown -->
+                <div class="profile-dropdown">
+                    <button class="profile-btn" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1);">
+                        <div class="profile-avatar" style="width: 28px; height: 28px; background: #fbbf24; color: #1e1b4b; font-size: 12px; margin: 0;">
+                            {{ request.user.username|make_list|first|upper }}
+                        </div>
+                        <span style="font-size: 13px; font-weight: 600; color: #fbbf24;">Admin ({{ request.user.username }})</span>
+                        <span style="font-size: 10px; color: #fbbf24;">▼</span>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="{% url 'admin_settings' %}" class="dropdown-item">⚙️ Platform Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'admin_logout' %}" class="dropdown-item danger">🚪 Logout Admin</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT AREA -->
+        <div class="content-wrapper">
+            {% if messages %}
+                <div class="messages-container">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} animate-in">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/main.js' %}"></script>
+<script>
+    // Theme Switcher Logic for Admin Side
+    const adminThemeToggle = document.getElementById('theme-toggle-admin');
+    const body = document.body;
+
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            body.classList.add('light-theme');
+            if (adminThemeToggle) adminThemeToggle.innerText = '🌙';
+        } else {
+            body.classList.remove('light-theme');
+            if (adminThemeToggle) adminThemeToggle.innerText = '☀️';
+        }
+    }
+
+    // Initialize Theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(savedTheme);
+
+    // Toggle Theme
+    if (adminThemeToggle) {
+        adminThemeToggle.addEventListener('click', () => {
+            const isLight = body.classList.contains('light-theme');
+            const newTheme = isLight ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+    }
+
+    // Re-check theme on focus (if it changed in another tab/user side)
+    window.addEventListener('focus', () => {
+        const currentStoredTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(currentStoredTheme);
+    });
+
+    // SCROLL TO TOP LOGIC (HOVER TO SCROLL)
+    const scrollTopBtn = document.createElement('button');
+    scrollTopBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+    scrollTopBtn.className = 'scroll-top-btn';
+    scrollTopBtn.setAttribute('title', 'Hover to Scroll Up');
+    scrollTopBtn.style.zIndex = '9999';
+    document.body.appendChild(scrollTopBtn);
+
+    let scrollInterval = null;
+
+    const startScrolling = () => {
+        if (scrollInterval) return;
+        const scrollStep = () => {
+            if (window.scrollY > 0) {
+                window.scrollBy(0, -5); // Adjust -5 for speed (slower/faster)
+                scrollInterval = requestAnimationFrame(scrollStep);
+            } else {
+                stopScrolling();
+            }
+        };
+        scrollInterval = requestAnimationFrame(scrollStep);
+    };
+
+    const stopScrolling = () => {
+        if (scrollInterval) {
+            cancelAnimationFrame(scrollInterval);
+            scrollInterval = null;
+        }
+    };
+
+    scrollTopBtn.addEventListener('mouseenter', startScrolling);
+    scrollTopBtn.addEventListener('mouseleave', stopScrolling);
+
+    // Keep click for instant scroll to top (Bonus UX)
+    scrollTopBtn.addEventListener('click', () => {
+        stopScrolling();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 100) {
+            scrollTopBtn.classList.add('show');
+        } else {
+            scrollTopBtn.classList.remove('show');
+        }
+    });
+
+
+</script>
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

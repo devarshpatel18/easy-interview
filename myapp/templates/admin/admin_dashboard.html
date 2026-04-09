@@ -1,0 +1,299 @@
+{% extends 'admin/admin_base.html' %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}<span>Admin Dashboard</span>{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="animate-in" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05)); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 32px;">
+    <h1 style="font-size: 24px; font-weight: 800; margin-bottom: 6px;">Welcome back, {{ request.user.username }} 👋</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">Here's what's happening on your platform today.</p>
+</div>
+
+<!-- Primary Stats Row -->
+<div class="stats-grid animate-in delay-1" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 28px;">
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">Total Users</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--text-primary);">{{ total_users }}</div>
+            </div>
+            <div class="admin-stat-icon">👥</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #fbbf24;">+{{ today_signups }} today</div>
+    </div>
+
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">Interviews</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--text-primary);">{{ total_interviews }}</div>
+            </div>
+            <div class="admin-stat-icon" style="color: #818cf8; background: rgba(99, 102, 241, 0.1);">🎤</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #818cf8;">{{ interviews_today }} today · {{ interviews_this_week }} this week</div>
+    </div>
+
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">Avg Score</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--text-primary);">{{ avg_percentage }}<span style="font-size: 18px; color: var(--text-muted);">%</span></div>
+            </div>
+            <div class="admin-stat-icon" style="color: #34d399; background: rgba(16, 185, 129, 0.1);">🎯</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #34d399;">{{ completed_interviews }} completed</div>
+    </div>
+
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">Completion Rate</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--text-primary);">{{ completion_rate }}<span style="font-size: 18px; color: var(--text-muted);">%</span></div>
+            </div>
+            <div class="admin-stat-icon" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1);">📈</div>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: #a78bfa;">{{ in_progress_interviews }} in progress</div>
+    </div>
+</div>
+
+<!-- Secondary Stats -->
+<div class="stats-grid animate-in delay-2" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 32px;">
+    <div class="admin-card" style="padding: 18px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 13px; color: var(--text-muted);">🟢 Active Users</div>
+            <div style="font-size: 20px; font-weight: 700; color: #34d399;">{{ active_users }}</div>
+        </div>
+    </div>
+    <div class="admin-card" style="padding: 18px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 13px; color: var(--text-muted);">🚫 Blocked Users</div>
+            <div style="font-size: 20px; font-weight: 700; color: #fca5a5;">{{ blocked_users }}</div>
+        </div>
+    </div>
+    <div class="admin-card" style="padding: 18px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 13px; color: var(--text-muted);">💻 Technical</div>
+            <div style="font-size: 20px; font-weight: 700; color: #818cf8;">{{ technical_count }}</div>
+        </div>
+    </div>
+    <div class="admin-card" style="padding: 18px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 13px; color: var(--text-muted);">🤝 HR</div>
+            <div style="font-size: 20px; font-weight: 700; color: #fbbf24;">{{ hr_count }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;" class="animate-in delay-2">
+    <!-- Daily Trends Chart -->
+    <div class="admin-card" style="padding: 24px;">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            📈 Interview Activity Trends
+            <span style="font-size: 11px; font-weight: 400; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 10px;">Last 7 Days</span>
+        </h3>
+        <div style="height: 300px;">
+            <canvas id="trendsChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Type Distribution -->
+    <div class="admin-card" style="padding: 24px;">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px;">🎯 Type Distribution</h3>
+        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+            <canvas id="typeChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="animate-in delay-2" style="margin-bottom: 32px;">
+    <!-- Score Distribution Chart -->
+    <div class="admin-card" style="padding: 24px;">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px;">📊 Score Performance Distribution</h3>
+        <div style="height: 250px;">
+            <canvas id="scoreChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Two Column: Recent Activity + Top Performers / New Users -->
+<div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px;" class="animate-in delay-3">
+
+    <!-- Recent Activity -->
+    <div class="admin-card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <h3 style="font-size: 16px; font-weight: 700;">📋 Recent Activity</h3>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+            {% for iv in recent_interviews %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,0.02); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                        {{ iv.user.username|make_list|first|upper }}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">{{ iv.user.username }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            {{ iv.get_interview_type_display }} · {{ iv.created_at|timesince }} ago
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    {% if iv.is_completed %}
+                        <span style="color: #34d399; font-weight: 600; font-size: 13px;">✅ {{ iv.score_percentage }}%</span>
+                    {% else %}
+                        <span style="color: #f59e0b; font-size: 13px;">⏳ In Progress</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div style="padding: 40px; text-align: center; color: var(--text-muted);">No interviews yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <!-- Top Performers -->
+        <div class="admin-card" style="padding: 0; overflow: hidden;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <h3 style="font-size: 16px; font-weight: 700;">🏆 Top Performers</h3>
+            </div>
+            {% for tp in top_performers %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.02);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 24px; font-weight: 700; color: {% if forloop.counter == 1 %}#fbbf24{% elif forloop.counter == 2 %}#94a3b8{% elif forloop.counter == 3 %}#d97706{% else %}var(--text-muted){% endif %}; font-size: 14px;">
+                        #{{ forloop.counter }}
+                    </div>
+                    <div style="font-weight: 600; font-size: 14px;">{{ tp.user.username }}</div>
+                </div>
+                <div style="font-weight: 700; color: #34d399; font-size: 14px;">{{ tp.score }}%</div>
+            </div>
+            {% empty %}
+            <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No completed interviews yet.</div>
+            {% endfor %}
+        </div>
+
+        <!-- New Users -->
+        <div class="admin-card" style="padding: 0; overflow: hidden;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <h3 style="font-size: 16px; font-weight: 700;">🆕 Newest Users</h3>
+            </div>
+            {% for u in recent_users %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.02);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(99, 102, 241, 0.2); color: #818cf8; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">
+                        {{ u.username|make_list|first|upper }}
+                    </div>
+                    <div style="font-size: 14px;">{{ u.username }}</div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted);">{{ u.date_joined|timesince }} ago</div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="animate-in delay-4" style="margin-top: 32px;">
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <a href="{% url 'manage_users' %}" class="btn-primary-glow" style="background: var(--admin-accent);">👥 Manage Users</a>
+        <a href="{% url 'admin_reports' %}" class="btn-outline-glass">📝 View Reports</a>
+        <a href="{% url 'admin_settings' %}" class="btn-outline-glass">⚙️ Platform Settings</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Chart Defaults
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+
+    // 1. Daily Trends Chart
+    const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+    new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: {{ trends_labels|safe }},
+            datasets: [{
+                label: 'Interviews',
+                data: {{ trends_data|safe }},
+                borderColor: '#fbbf24',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#fbbf24',
+                pointBorderColor: 'rgba(255,255,255,0.2)',
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { stepSize: 1 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // 2. Type Distribution Chart
+    const typeCtx = document.getElementById('typeChart').getContext('2d');
+    new Chart(typeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Technical', 'HR'],
+            datasets: [{
+                data: [{{ technical_count }}, {{ hr_count }}],
+                backgroundColor: ['#6366f1', '#fbbf24'],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // 3. Score Distribution Chart
+    const scoreCtx = document.getElementById('scoreChart').getContext('2d');
+    new Chart(scoreCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ score_labels|safe }},
+            datasets: [{
+                label: 'Candidate Count',
+                data: {{ score_data|safe }},
+                backgroundColor: [
+                    'rgba(239, 68, 68, 0.6)',
+                    'rgba(245, 158, 11, 0.6)',
+                    'rgba(16, 185, 129, 0.6)'
+                ],
+                borderRadius: 8,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { stepSize: 1 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

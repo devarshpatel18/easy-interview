@@ -1,0 +1,82 @@
+{% extends 'myapp/base.html' %}
+{% block nav_history %}active{% endblock %}
+{% block page_title %}<span>Feedback & Scores</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <h1 class="page-title">Interview History 📊</h1>
+    <p class="page-subtitle">View all your past interviews, scores, and AI-generated feedback.</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid animate-in delay-1" style="margin-bottom: 32px;">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_all }}</div>
+        <div class="stat-label">Total Interviews</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ completed_count }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ avg_score }}%</div>
+        <div class="stat-label">Average Score</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ best_score|floatformat:0 }}%</div>
+        <div class="stat-label">Best Score</div>
+    </div>
+</div>
+
+<!-- Interview Type Breakdown -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;" class="animate-in delay-1">
+    <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 36px; margin-bottom: 8px;">💻</div>
+        <div style="font-size: 28px; font-weight: 800; color: var(--accent-primary);">{{ technical_count }}</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Technical Interviews</div>
+    </div>
+    <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 36px; margin-bottom: 8px;">🤝</div>
+        <div style="font-size: 28px; font-weight: 800; color: var(--success);">{{ hr_count }}</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">HR Interviews</div>
+    </div>
+</div>
+
+{% if interviews %}
+<div class="history-grid animate-in delay-1">
+    {% for interview in interviews %}
+    <div class="history-card">
+        <div class="history-info">
+            <span class="history-type {% if interview.interview_type == 'technical' %}type-technical{% else %}type-hr{% endif %}">
+                {{ interview.get_interview_type_display }}
+            </span>
+            <div class="history-details">
+                <h4>{{ interview.skills_display|truncatewords:5 }}</h4>
+                <span>{{ interview.created_at|date:"M d, Y · h:i A" }}</span>
+            </div>
+        </div>
+
+        <div class="history-actions">
+            {% if interview.is_completed %}
+                <span class="badge-completed">✅ Completed</span>
+                <div class="history-score">{{ interview.score_percentage }}%</div>
+                <a href="{% url 'result' interview.id %}" class="btn-primary-glow btn-sm">View Report</a>
+                
+            {% else %}
+                <span class="badge-pending">⏳ In Progress</span>
+                <a href="{% url 'interview' interview.id %}" class="btn-success-glow btn-sm">▶ Continue</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state animate-in delay-1">
+    <span class="empty-icon">📭</span>
+    <h3>No interviews yet</h3>
+    <p>Upload your resume and start your first AI-powered mock interview!</p>
+    <a href="{% url 'resume' %}" class="btn-primary-glow mt-3">Get Started →</a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,146 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Easy Interview</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+</head>
+<body>
+
+<button id="theme-toggle" class="btn-outline-glass" style="position: absolute; top: 1rem; right: 1rem; padding: 0.4rem 0.8rem; border-radius: 50%; font-size: 1.2rem; cursor: pointer; border: none; background: var(--bg-glass); z-index: 1000;">☀️</button>
+
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card animate-in">
+            <a href="{% url 'landing' %}" style="display: inline-block; margin-bottom: 20px; color: var(--text-muted); font-size: 14px; text-decoration: none; font-weight: 500;">
+                ⬅️ Back to Home
+            </a>
+
+            <div class="auth-logo">
+                <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
+                    <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                    <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>Easy Interview</h1>
+                <p>AI-Powered Mock Interview Platform</p>
+            </div>
+
+            <form method="POST" novalidate id="login-form">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" class="form-control" name="email" id="email" placeholder="you@example.com">
+                    <div id="email-error" class="field-error" style="color: #ef4444; font-size: 11px; margin-top: 4px; display: none; font-weight: 500;">✗ Enter a valid email address</div>
+                </div>
+
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" name="password" id="login-password" placeholder="••••••••" style="padding-right: 40px;">
+                    <button type="button" onclick="togglePassword('login-password')" style="position: absolute; right: 12px; top: 36px; background: none; border: none; cursor: pointer; font-size: 16px;">
+                        <span id="login-password-icon">👁️</span>
+                    </button>
+                    <div id="password-error" class="field-error" style="color: #ef4444; font-size: 11px; margin-top: 4px; display: none; font-weight: 500;">✗ This field is required</div>
+                </div>
+
+                <a href="{% url 'forgot_password' %}" class="forgot-link">Forgot Password?</a>
+                <a href="{% url 'expert_login' %}" class="forgot-link" style="display: block; margin-top: 8px; text-align: center; font-weight: 600; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🎓 Login as Expert</a>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}" style="margin-top: 10px;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <button type="submit" class="btn-primary-glow btn-block btn-lg">
+                    Sign In →
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="{% url 'register' %}">Create Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + '-icon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerText = '🙈';
+    } else {
+        input.type = 'password';
+        icon.innerText = '👁️';
+    }
+}
+
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    let hasError = false;
+    document.querySelectorAll('.field-error').forEach(el => el.style.display = 'none');
+    
+    const email = document.getElementById('email').value.trim();
+    const pwd = document.getElementById('login-password').value;
+
+    if (!email) {
+        document.getElementById('email-error').innerText = '✗ This field is required';
+        document.getElementById('email-error').style.display = 'block';
+        hasError = true;
+    } else if (!email.includes('@')) {
+        document.getElementById('email-error').innerText = '✗ Enter a valid email address';
+        document.getElementById('email-error').style.display = 'block';
+        hasError = true;
+    }
+
+    if (!pwd) {
+        document.getElementById('password-error').style.display = 'block';
+        hasError = true;
+    }
+
+    if (hasError) {
+        e.preventDefault();
+    }
+});
+
+const themeToggle = document.getElementById('theme-toggle');
+function updateThemeIcon(isLight) {
+    if(themeToggle) themeToggle.innerText = isLight ? '🌙' : '☀️';
+}
+const isLightTheme = localStorage.getItem('theme') === 'light';
+if (isLightTheme) {
+    document.body.classList.add('light-theme');
+    updateThemeIcon(true);
+}
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-theme');
+        const isLight = document.body.classList.contains('light-theme');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        updateThemeIcon(isLight);
+    });
+}
+
+setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(alert => {
+        alert.style.transition = 'opacity 0.5s ease';
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+    });
+}, 4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+{% extends 'expert/expert_base.html' %}
+{% block nav_questions %}active{% endblock %}
+{% block page_title %}<span>Question Bank</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <div class="text-center" style="margin-bottom: 32px;">
+        <h1 class="page-title">📝 Expert Question Bank</h1>
+        <p class="page-subtitle">Add questions that will appear in interviews matching the skill & difficulty.</p>
+    </div>
+</div>
+
+<!-- Add New Question Form -->
+<div class="glass-card animate-in delay-1" style="margin-bottom: 32px;">
+    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        <span>➕</span> Add New Question
+    </h3>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Question Text *</label>
+            <textarea name="question_text" class="transcript-area" rows="3" placeholder="Enter your interview question..." required style="width: 100%; box-sizing: border-box;"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Ideal Answer (Optional)</label>
+            <textarea name="ideal_answer" class="transcript-area" rows="3" placeholder="Enter the ideal/expected answer..." style="width: 100%; box-sizing: border-box;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label">Skill / Topic</label>
+                <select name="skill" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                    {% for value, label in skill_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label">Difficulty</label>
+                <select name="difficulty" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                    {% for value, label in difficulty_choices %}
+                    <option value="{{ value }}" {% if value == 'medium' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary-glow" style="padding: 10px 24px; background: linear-gradient(135deg, #6366f1, #a855f7);">✅ Add Question</button>
+    </form>
+</div>
+
+<!-- Existing Questions -->
+<div class="animate-in delay-2">
+    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">📋 Your Questions ({{ questions|length }})</h3>
+
+    {% if questions %}
+    {% for eq in questions %}
+    <div class="glass-card" style="margin-bottom: 16px; position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <span style="padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(99, 102, 241, 0.15); color: #818cf8;">{{ eq.get_skill_display }}</span>
+                    <span style="padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: {% if eq.difficulty == 'easy' %}rgba(99, 102, 241, 0.15); color: #818cf8;{% elif eq.difficulty == 'hard' %}rgba(239, 68, 68, 0.15); color: #ef4444;{% else %}rgba(245, 158, 11, 0.15); color: #fbbf24;{% endif %}">{{ eq.get_difficulty_display }}</span>
+                </div>
+                <p style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">{{ eq.question_text }}</p>
+                {% if eq.ideal_answer %}
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">💡 <em>{{ eq.ideal_answer|truncatewords:30 }}</em></p>
+                {% endif %}
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Added {{ eq.created_at|date:"M d, Y" }}</p>
+            </div>
+            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                <!-- Edit Button -->
+                <button type="button" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px;" onclick="openEditModal({{ eq.id }}, `{{ eq.question_text|escapejs }}`, `{{ eq.ideal_answer|default_if_none:''|escapejs }}`, '{{ eq.skill }}', '{{ eq.difficulty }}')">✏️ Edit</button>
+                <!-- Delete -->
+                <form method="POST" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="eq_id" value="{{ eq.id }}">
+                    <button type="submit" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="return confirm('Delete this question?');">🗑️</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="glass-card" style="text-align: center; padding: 48px; color: var(--text-muted);">
+        <p style="font-size: 48px; margin-bottom: 12px;">📝</p>
+        <p>No questions yet. Add your first question above!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 600px; width: 90%; margin: auto; position: relative; top: 50%; transform: translateY(-50%);">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px;">✏️ Edit Question</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="eq_id" id="edit-eq-id">
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Question Text</label>
+                <textarea name="question_text" id="edit-question-text" class="transcript-area" rows="3" required style="width: 100%; box-sizing: border-box;"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Ideal Answer</label>
+                <textarea name="ideal_answer" id="edit-ideal-answer" class="transcript-area" rows="3" style="width: 100%; box-sizing: border-box;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label class="form-label">Skill</label>
+                    <select name="skill" id="edit-skill" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                        {% for value, label in skill_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label class="form-label">Difficulty</label>
+                    <select name="difficulty" id="edit-difficulty" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                        {% for value, label in difficulty_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn-outline-glass" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-primary-glow" style="background: linear-gradient(135deg, #10b981, #06b6d4);">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditModal(id, questionText, idealAnswer, skill, difficulty) {
+    document.getElementById('edit-eq-id').value = id;
+    document.getElementById('edit-question-text').value = questionText;
+    document.getElementById('edit-ideal-answer').value = idealAnswer;
+    document.getElementById('edit-skill').value = skill;
+    document.getElementById('edit-difficulty').value = difficulty;
+    document.getElementById('edit-modal').style.display = 'block';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
+
+// Close modal on outside click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+</script>
+{% endblock %}

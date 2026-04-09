@@ -1,0 +1,164 @@
+{% extends 'myapp/base.html' %}
+{% block nav_settings %}active{% endblock %}
+{% block page_title %}<span>Settings</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+
+    <h1 class="page-title">Settings ⚙️</h1>
+    <p class="page-subtitle">Manage your account and preferences.</p>
+
+    <!-- Account Information -->
+    <div class="settings-section">
+        <div class="glass-card">
+            <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700;">👤 Account Information</h3>
+            <div style="display: grid; gap: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-glass);">
+                    <div>
+                        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Username</div>
+                        <div style="font-size: 15px; font-weight: 600; margin-top: 4px;">{{ request.user.username }}</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-glass);">
+                    <div>
+                        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Email Address</div>
+                        <div style="font-size: 15px; font-weight: 600; margin-top: 4px;">{{ request.user.email }}</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-glass);">
+                    <div>
+                        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Member Since</div>
+                        <div style="font-size: 15px; font-weight: 600; margin-top: 4px;">{{ request.user.date_joined|date:"F d, Y" }}</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                    <div>
+                        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Account Status</div>
+                        <div style="font-size: 15px; font-weight: 600; margin-top: 4px; color: var(--success);">✅ Active</div>
+                    </div>
+                </div>
+            </div>
+            <a href="{% url 'profile' %}" class="btn-outline-glass btn-sm mt-3">Edit Profile →</a>
+        </div>
+    </div>
+
+    <!-- Interview Preferences -->
+    <div class="settings-section">
+        <div class="glass-card">
+            <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700;">🎯 Interview Preferences</h3>
+            <div style="display: grid; gap: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+                    <div>
+                        <div style="font-weight: 600;">Questions Per Interview</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">AI generates this many questions each session</div>
+                    </div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--accent-primary);">10</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+                    <div>
+                        <div style="font-weight: 600;">Interview Duration</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Countdown timer per interview session</div>
+                    </div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--accent-primary);">25 min</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+                    <div>
+                        <div style="font-weight: 600;">Speech-to-Text Language</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Language for mic dictation</div>
+                    </div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--accent-primary);">English (US)</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+                    <div>
+                        <div style="font-weight: 600;">AI Model</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Powered by Google Gemini</div>
+                    </div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--accent-primary);">Gemini 2.0 Flash</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="settings-section">
+        <div class="glass-card">
+            <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700;">⚡ Quick Actions</h3>
+            <div style="display: grid; gap: 12px;">
+                <a href="{% url 'resume' %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition); text-decoration: none;">
+                    <span style="font-size: 20px;">📄</span>
+                    <div>
+                        <div style="font-weight: 600;">Update Resume</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Upload a new resume for future interviews</div>
+                    </div>
+                    <span style="margin-left: auto; color: var(--text-muted);">→</span>
+                </a>
+                <a href="{% url 'start_interview' %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition); text-decoration: none;">
+                    <span style="font-size: 20px;">🎤</span>
+                    <div>
+                        <div style="font-weight: 600;">Start New Interview</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Begin an AI-powered mock interview</div>
+                    </div>
+                    <span style="margin-left: auto; color: var(--text-muted);">→</span>
+                </a>
+                <a href="{% url 'history' %}" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition); text-decoration: none;">
+                    <span style="font-size: 20px;">📊</span>
+                    <div>
+                        <div style="font-weight: 600;">View All Reports</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Check your past performance and AI feedback</div>
+                    </div>
+                    <span style="margin-left: auto; color: var(--text-muted);">→</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- About -->
+    <div class="settings-section">
+        <div class="glass-card">
+            <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <svg class="logo-mic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;">
+                    <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" fill="url(#logo-grad)" />
+                    <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M12 18V22" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <path d="M8 22H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="5" y1="1" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                About Easy Interview
+            </h3>
+            <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.8;">
+                <p>Easy Interview is an AI-powered mock interview platform that helps you prepare for job interviews.</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+                    <div style="padding: 10px; background: var(--bg-glass); border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-weight: 600; color: var(--text-primary);">Version</div>
+                        <div style="color: var(--text-muted); font-size: 13px;">2.0.0</div>
+                    </div>
+                    <div style="padding: 10px; background: var(--bg-glass); border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-weight: 600; color: var(--text-primary);">AI Engine</div>
+                        <div style="color: var(--text-muted); font-size: 13px;">Google Gemini</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="settings-section">
+        <div class="glass-card" style="border-color: rgba(239, 68, 68, 0.3);">
+            <h3 style="margin-bottom: 12px; font-size: 16px; font-weight: 700; color: var(--danger);">⚠️ Danger Zone</h3>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+                Permanently delete your account and all interview data. This action cannot be undone.
+            </p>
+            <form method="POST" action="{% url 'delete_account' %}" onsubmit="return confirm('Are you sure you want to delete your account? All your interview data will be permanently lost. This cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger-glow">🗑️ Delete My Account</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,665 @@
+{% extends 'myapp/base.html' %}
+{% block nav_interview %}active{% endblock %}
+{% block page_title %}<span>AI Interview</span>{% endblock %}
+
+{% block content %}
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <div class="loading-text">🤖 AI is evaluating your answers...</div>
+    <div class="loading-text" style="font-size: 12px; margin-top: 4px; color: var(--text-muted);">This may take 15-30 seconds</div>
+</div>
+
+<style>
+    .interview-layout {
+        display: flex;
+        gap: 32px;
+        align-items: flex-start;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .interview-main {
+        flex: 1;
+        min-width: 0; /* Prevent flex blowout */
+    }
+
+    .quiz-nav-sidebar {
+        width: 300px;
+        position: sticky;
+        top: 100px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-xl);
+        padding: 24px;
+        backdrop-filter: blur(12px);
+        transition: var(--transition);
+    }
+
+    body.light-theme .quiz-nav-sidebar {
+        background: #ffffff;
+        border-color: #e2e8f0;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+    }
+
+    .quiz-nav-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-glass);
+    }
+
+    body.light-theme .quiz-nav-title {
+        color: #1e293b;
+        border-bottom-color: #f1f5f9;
+    }
+
+    .quiz-nav-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .nav-box {
+        aspect-ratio: 1 / 1.35;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    body.light-theme .nav-box {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .nav-box:hover {
+        border-color: var(--accent-primary);
+        background: rgba(99, 102, 241, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .nav-box.active {
+        border-color: #fbbf24;
+        background: rgba(245, 158, 11, 0.05);
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+    }
+
+    body.light-theme .nav-box.active {
+        border-color: var(--accent-primary);
+        background: rgba(99, 102, 241, 0.05);
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+    }
+
+    .nav-box-num {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-secondary);
+    }
+
+    body.light-theme .nav-box-num {
+        color: #64748b;
+    }
+
+    .nav-box.active .nav-box-num {
+        color: #fbbf24;
+    }
+
+    body.light-theme .nav-box.active .nav-box-num {
+        color: var(--accent-primary);
+    }
+
+    .nav-box-status {
+        height: 35%;
+        background: transparent;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        transition: var(--transition);
+    }
+
+    body.light-theme .nav-box-status {
+        border-top-color: #f1f5f9;
+    }
+
+    /* GREEN Attempted State */
+    .nav-box.attempted .nav-box-status {
+        background: #10b981; /* Premium Green */
+    }
+
+    body.light-theme .nav-box.attempted {
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .nav-box.attempted .nav-box-num {
+        color: white;
+    }
+
+    body.light-theme .nav-box.attempted .nav-box-num {
+        color: #10b981;
+    }
+
+    .nav-legend {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .legend-box {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        flex-shrink: 0;
+    }
+
+    /* Legend Colors */
+    .attempted-legend {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+    }
+    .current-legend {
+        border: 2px solid #fbbf24 !important;
+        background: rgba(245, 158, 11, 0.1) !important;
+    }
+    .empty-legend {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Light Theme Legend Overrides */
+    body.light-theme .legend-box {
+        border: 1.5px solid #e2e8f0;
+        background: #ffffff;
+    }
+    body.light-theme .current-legend {
+        border-color: var(--accent-primary) !important;
+        background: rgba(99, 102, 241, 0.05) !important;
+    }
+    body.light-theme .attempted-legend {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+    }
+    body.light-theme .empty-legend {
+        background: #ffffff !important;
+        border-color: #e2e8f0 !important;
+    }
+
+    @media (max-width: 1024px) {
+        .interview-layout {
+            flex-direction: column;
+        }
+        .quiz-nav-sidebar {
+            width: 100%;
+            position: relative;
+            top: 0;
+            margin-bottom: 24px;
+            order: -1;
+        }
+    }
+</style>
+
+<div class="interview-layout">
+    <div class="interview-main">
+        <div class="interview-container animate-in" style="max-width: 100%; margin: 0;">
+            <div class="text-center" style="margin-bottom: 32px;">
+                <h1 class="page-title">AI Mock Interview 🎤</h1>
+                <p class="page-subtitle">
+                    {{ interview.get_interview_type_display }} · {{ interview.skills_display }}
+                </p>
+            </div>
+
+            <!-- Countdown Timer -->
+            <div class="timer-container" id="timer-container" style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-flex; align-items: center; gap: 10px; padding: 12px 28px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); backdrop-filter: blur(12px);">
+                    <span style="font-size: 18px;">⏱️</span>
+                    <span id="timer-display" style="font-size: 24px; font-weight: 800; font-family: 'Inter', monospace; color: var(--text-primary); letter-spacing: 2px;">25:00</span>
+                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 4px;">remaining</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="interview-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="question-number">Question 1 of {{ total_questions }}</span>
+                    <span id="progress-answered">0 of {{ total_questions }} answered</span>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="question-card">
+                <div class="question-number">
+                    <span>❓</span> <span id="q-badge">QUESTION 1</span>
+                </div>
+
+                <div class="question-text" id="question-text">
+                    Loading question...
+                </div>
+
+                <!-- Answer Section -->
+                <div class="answer-section">
+                    <label class="form-label">Your Answer (speak or type)</label>
+                    <textarea
+                        id="transcript"
+                        class="transcript-area"
+                        placeholder="Click the 🎤 mic button below to speak your answer, or type it here..."
+                        rows="6"
+                    ></textarea>
+
+                    <div class="mic-controls">
+                        <button type="button" class="mic-btn" id="mic-btn" onclick="micClick()">
+                            🎤
+                        </button>
+                        <span class="mic-status" id="mic-status">Click mic to start speaking</span>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="question-nav">
+                    <button type="button" class="btn-outline-glass" id="prev-btn" onclick="goPrev()" style="display: none;">
+                        ← Previous
+                    </button>
+
+                    <div style="flex: 1;"></div>
+
+                    <button type="button" class="btn-primary-glow" id="next-btn" onclick="goNext()">
+                        Next Question →
+                    </button>
+
+                    <button type="button" class="btn-success-glow btn-lg" id="submit-btn" onclick="doSubmit()" style="display: none;">
+                        🚀 Submit Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Navigation Sidebar -->
+    <div class="quiz-nav-sidebar animate-in delay-2">
+        <div class="quiz-nav-title">
+            <span>📅</span> Interview Questions
+        </div>
+        <div class="quiz-nav-grid" id="quiz-nav-grid">
+            <!-- Navigation boxes will be injected here via JS -->
+        </div>
+
+        <div class="nav-legend">
+            <div class="legend-item">
+                <div class="legend-box attempted-legend"></div>
+                <span>Attempted</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box empty-legend"></div>
+                <span>Not Attempted</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box current-legend"></div>
+                <span>Current Question</span>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px;">
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Form for Submission -->
+<form id="interview-form" method="POST" action="{% url 'submit_interview' interview.id %}" style="display: none;">
+    {% csrf_token %}
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// INTERVIEW DATA
+// ============================================
+var questions = [];
+var currentIdx = 0;
+var totalQ = 0;
+var userAnswers = {};
+
+try {
+    questions = JSON.parse('{{ questions_json|escapejs }}');
+} catch(e) {
+    questions = [];
+}
+totalQ = questions.length;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Show mic support info
+    var hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    var debugEl = document.getElementById('mic-debug');
+    if (debugEl) {
+        debugEl.textContent = 'Speech API: ' + (hasSR ? '✅ Supported' : '❌ Not supported') + ' | Browser: ' + navigator.userAgent.split(' ').pop();
+    }
+
+    if (totalQ > 0) {
+        renderNavigation();
+        displayQuestion(0);
+    } else {
+        document.getElementById('question-text').textContent = 'No questions available. Please start a new interview.';
+    }
+});
+
+function renderNavigation() {
+    var grid = document.getElementById('quiz-nav-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    questions.forEach(function(q, idx) {
+        var box = document.createElement('div');
+        box.className = 'nav-box';
+        if (idx === currentIdx) box.classList.add('active');
+        
+        // Check if attempted
+        if (userAnswers[q.id] && userAnswers[q.id].trim().length > 0) {
+            box.classList.add('attempted');
+        }
+
+        box.onclick = function() { jumpToQuestion(idx); };
+
+        box.innerHTML = `
+            <div class="nav-box-num">${idx + 1}</div>
+            <div class="nav-box-status"></div>
+        `;
+        grid.appendChild(box);
+    });
+}
+
+function jumpToQuestion(idx) {
+    saveAnswer();
+    displayQuestion(idx);
+}
+
+// ============================================
+// QUESTION DISPLAY
+// ============================================
+function displayQuestion(idx) {
+    if (idx < 0 || idx >= totalQ) return;
+    currentIdx = idx;
+    var q = questions[idx];
+
+    document.getElementById('question-number').textContent = 'Question ' + (idx + 1) + ' of ' + totalQ;
+    document.getElementById('q-badge').textContent = 'QUESTION ' + (idx + 1);
+    document.getElementById('question-text').textContent = q.question_text;
+    document.getElementById('transcript').value = userAnswers[q.id] || '';
+
+    var pct = ((idx + 1) / totalQ) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+
+    var answered = 0;
+    for (var k in userAnswers) {
+        if (userAnswers[k] && userAnswers[k].trim().length > 0) answered++;
+    }
+    document.getElementById('progress-answered').textContent = answered + ' of ' + totalQ + ' answered';
+
+    document.getElementById('prev-btn').style.display = (idx > 0) ? 'inline-flex' : 'none';
+    if (idx === totalQ - 1) {
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('submit-btn').style.display = 'inline-flex';
+    } else {
+        document.getElementById('next-btn').style.display = 'inline-flex';
+        document.getElementById('submit-btn').style.display = 'none';
+    }
+
+    // Stop any active recording when switching questions
+    micStop();
+    
+    // Update navigation sidebar
+    renderNavigation();
+}
+
+function saveAnswer() {
+    if (questions[currentIdx]) {
+        userAnswers[questions[currentIdx].id] = document.getElementById('transcript').value;
+    }
+}
+
+function goNext() {
+    saveAnswer();
+    if (currentIdx < totalQ - 1) {
+        displayQuestion(currentIdx + 1);
+    }
+}
+
+function goPrev() {
+    saveAnswer();
+    if (currentIdx > 0) {
+        displayQuestion(currentIdx - 1);
+    }
+}
+
+function doSubmit() {
+    saveAnswer();
+    var answered = 0;
+    for (var k in userAnswers) {
+        if (userAnswers[k] && userAnswers[k].trim().length > 0) answered++;
+    }
+    if (answered === 0) {
+        alert('Please answer at least one question before submitting.');
+        return;
+    }
+    if (!confirm('Submit your interview? AI will evaluate your answers.')) return;
+
+    document.getElementById('loading-overlay').style.display = 'flex';
+    var form = document.getElementById('interview-form');
+    var old = form.querySelectorAll('.answer-input');
+    for (var i = 0; i < old.length; i++) old[i].remove();
+
+    for (var j = 0; j < questions.length; j++) {
+        var inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'answer_' + questions[j].id;
+        inp.value = userAnswers[questions[j].id] || '(No answer provided)';
+        inp.className = 'answer-input';
+        form.appendChild(inp);
+    }
+    form.submit();
+}
+
+// ============================================
+// SPEECH-TO-TEXT — REAL-TIME VERSION
+// ============================================
+var isRecording = false;
+var recognizer = null;
+var finalTranscript = '';
+
+function micClick() {
+    if (isRecording) {
+        micStop();
+    } else {
+        micStart();
+    }
+}
+
+function micStart() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+        alert(
+            'Speech Recognition not available!\n\n' +
+            '1. Use Google Chrome browser\n' +
+            '2. Open: http://localhost:8000\n' +
+            '3. Allow microphone when asked'
+        );
+        return;
+    }
+
+    var textarea = document.getElementById('transcript');
+    var btn = document.getElementById('mic-btn');
+    var status = document.getElementById('mic-status');
+
+    // Save whatever text is already in the box
+    finalTranscript = textarea.value;
+    if (finalTranscript && !finalTranscript.endsWith(' ') && !finalTranscript.endsWith('\n')) {
+        finalTranscript += ' ';
+    }
+
+    recognizer = new SR();
+    recognizer.lang = 'en-US';
+    recognizer.continuous = true;       // Keep listening
+    recognizer.interimResults = true;   // Show text in real-time
+    recognizer.maxAlternatives = 1;
+
+    recognizer.onstart = function() {
+        isRecording = true;
+        btn.classList.add('recording');
+        btn.innerHTML = '⏹';
+        status.textContent = '🔴 Recording & transcribing...';
+        status.classList.add('active');
+    };
+
+    recognizer.onresult = function(e) {
+        var interimTranscript = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+            var transcriptChunk = e.results[i][0].transcript;
+            if (e.results[i].isFinal) {
+                finalTranscript += transcriptChunk + ' ';
+            } else {
+                interimTranscript += transcriptChunk;
+            }
+        }
+        // Update the textarea live with both final and interim text
+        textarea.value = finalTranscript + interimTranscript;
+    };
+
+    recognizer.onerror = function(e) {
+        console.log('Mic error:', e.error);
+        if (e.error === 'not-allowed') {
+            alert('🎤 Microphone blocked! Please allow it in Chrome settings (click the lock icon in the address bar) and reload.');
+            micStop();
+        }
+    };
+
+    recognizer.onend = function() {
+        // Auto-restart if it disconnected but user hasn't clicked stop
+        if (isRecording) {
+            console.log('Mic paused, auto-restarting...');
+            setTimeout(function() {
+                if (isRecording) micStart(); // Recursively call micStart to create a fresh instance
+            }, 300);
+        }
+    };
+
+    try {
+        recognizer.start();
+    } catch(err) {
+        console.error('Start failed:', err);
+    }
+}
+
+function micStop() {
+    isRecording = false;
+    if (recognizer) {
+        try { recognizer.stop(); } catch(e) {}
+        recognizer = null;
+    }
+    
+    // Clean up UI
+    var btn = document.getElementById('mic-btn');
+    var status = document.getElementById('mic-status');
+    if (btn) {
+        btn.classList.remove('recording');
+        btn.innerHTML = '🎤';
+    }
+    if (status) {
+        status.textContent = 'Click mic to start speaking';
+        status.classList.remove('active');
+    }
+}
+
+// ============================================
+// COUNTDOWN TIMER
+// ============================================
+var timeLeft = parseInt("{{ remaining_seconds }}");
+var timerInterval = null;
+
+function startTimer() {
+    var display = document.getElementById('timer-display');
+    var container = document.getElementById('timer-container');
+
+    timerInterval = setInterval(function() {
+        timeLeft--;
+
+        var minutes = Math.floor(timeLeft / 60);
+        var seconds = timeLeft % 60;
+        display.textContent =
+            (minutes < 10 ? '0' : '') + minutes + ':' +
+            (seconds < 10 ? '0' : '') + seconds;
+
+        // Turn red when under 2 minutes
+        if (timeLeft <= 120) {
+            display.style.color = '#ef4444';
+            container.style.animation = 'pulse 1s infinite';
+        }
+
+        // Warning at 2 minutes
+        if (timeLeft === 120) {
+            alert('⚠️ Only 2 minutes remaining! Finish up your answers.');
+        }
+
+        // Time's up — auto-submit
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            display.textContent = '00:00';
+            alert('⏰ Time is up! Your interview will be submitted now.');
+            saveAnswer();
+            // Submit even if no answers
+            document.getElementById('loading-overlay').style.display = 'flex';
+            var form = document.getElementById('interview-form');
+            form.querySelectorAll('.answer-input').forEach(function(el) { el.remove(); });
+            for (var j = 0; j < questions.length; j++) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'answer_' + questions[j].id;
+                inp.value = userAnswers[questions[j].id] || '(No answer provided)';
+                inp.className = 'answer-input';
+                form.appendChild(inp);
+            }
+            form.submit();
+        }
+    }, 1000);
+}
+
+// Start timer when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    startTimer();
+    
+    // Real-time navigation updates as user types
+    document.getElementById('transcript').addEventListener('input', function() {
+        saveAnswer();
+        renderNavigation();
+    });
+});
+</script>
+{% endblock %}

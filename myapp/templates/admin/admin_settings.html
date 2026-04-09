@@ -1,0 +1,184 @@
+{% extends 'admin/admin_base.html' %}
+{% block nav_settings %}active{% endblock %}
+{% block page_title %}<span>Platform Settings</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in" style="margin-bottom: 32px;">
+    <h1 class="page-title">Platform Settings ⚙️</h1>
+    <p class="page-subtitle">Control global platform behavior, access policies, and interview defaults.</p>
+</div>
+
+<form method="POST" action="{% url 'admin_settings' %}">
+    {% csrf_token %}
+
+    <!-- Access Controls -->
+    <div class="admin-card animate-in delay-1" style="margin-bottom: 24px;">
+        <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            🔐 Access Controls
+        </h3>
+        
+        <div class="toggle-switch-container">
+            <div>
+                <div style="font-weight: 600; font-size: 15px;">Allow New Registrations</div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">When disabled, new users cannot create accounts on the platform.</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" name="allow_registration" {% if settings.allow_registration %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-switch-container" style="margin-bottom: 0;">
+            <div>
+                <div style="font-weight: 600; font-size: 15px; color: #fca5a5;">🚨 Maintenance Mode</div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Temporarily blocks access for all non-admin users. Use during updates or emergencies.</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Interview Configuration -->
+    <div class="admin-card animate-in delay-2" style="margin-bottom: 24px;">
+        <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            🎤 Interview Configuration
+        </h3>
+        
+        <div style="margin-bottom: 24px;">
+            <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 12px;">Default Interview Duration (Minutes)</label>
+            
+            <style>
+                .timer-presets-group {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                }
+                .timer-btn {
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    color: var(--text-secondary);
+                    padding: 12px 24px;
+                    border-radius: var(--radius-md);
+                    font-weight: 600;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: var(--transition);
+                    min-width: 80px;
+                }
+                .timer-btn:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-color: rgba(245, 158, 11, 0.3);
+                    color: var(--text-primary);
+                }
+                .timer-btn.active {
+                    background: rgba(245, 158, 11, 0.15);
+                    border-color: #fbbf24;
+                    color: #fbbf24;
+                    box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);
+                }
+                .custom-timer-input-wrapper {
+                    display: none;
+                    margin-top: 12px;
+                    animation: fadeIn 0.3s ease;
+                }
+                .custom-timer-input-wrapper.show {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            </style>
+
+            <div class="timer-presets-group">
+                <button type="button" class="timer-btn {% if settings.interview_timer == 15 %}active{% endif %}" onclick="setTimer(15, this)">15m</button>
+                <button type="button" class="timer-btn {% if settings.interview_timer == 30 %}active{% endif %}" onclick="setTimer(30, this)">30m</button>
+                <button type="button" class="timer-btn {% if settings.interview_timer == 45 %}active{% endif %}" onclick="setTimer(45, this)">45m</button>
+                <button type="button" class="timer-btn {% if settings.interview_timer == 60 %}active{% endif %}" onclick="setTimer(60, this)">60m</button>
+                <button type="button" class="timer-btn" id="custom-timer-trigger" onclick="toggleCustomTimer()">Custom</button>
+            </div>
+
+            <div id="custom-timer-container" class="custom-timer-input-wrapper">
+                <input type="number" name="interview_timer" id="interview_timer_input" class="form-input" value="{{ settings.interview_timer }}" min="5" max="120" style="background: rgba(0,0,0,0.3); max-width: 140px; border-color: rgba(245, 158, 11, 0.2); padding: 12px; font-size: 15px; font-weight: 600; text-align: center;">
+                <span style="font-size: 14px; color: var(--text-muted); font-weight: 500;">Minutes</span>
+            </div>
+
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 12px;">
+                <i style="color: #fbbf24; margin-right: 4px;">ℹ️</i> Current configuration is set to <b>{{ settings.interview_timer }}</b> minutes.
+            </div>
+        </div>
+
+        <script>
+            function setTimer(minutes, btn) {
+                document.getElementById('interview_timer_input').value = minutes;
+                document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('custom-timer-container').classList.remove('show');
+            }
+
+            function toggleCustomTimer() {
+                const container = document.getElementById('custom-timer-container');
+                const trigger = document.getElementById('custom-timer-trigger');
+                container.classList.add('show');
+                document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active'));
+                trigger.classList.add('active');
+                document.getElementById('interview_timer_input').focus();
+            }
+
+            // Set custom active on load if not 15, 30, 45, or 60
+            window.addEventListener('DOMContentLoaded', () => {
+                const current = parseInt("{{ settings.interview_timer }}");
+                if (![15, 30, 45, 60].includes(current)) {
+                    document.getElementById('custom-timer-container').classList.add('show');
+                    document.getElementById('custom-timer-trigger').classList.add('active');
+                }
+            });
+        </script>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Questions Per Interview</div>
+                <div style="font-size: 22px; font-weight: 700; color: #fbbf24;">10</div>
+            </div>
+            <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">AI Model</div>
+                <div style="font-size: 14px; font-weight: 600; color: #fbbf24;">Gemini 2.0 Flash</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platform Info -->
+    <div class="admin-card animate-in delay-3" style="margin-bottom: 32px;">
+        <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            ℹ️ Platform Info
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+            <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); text-align: center;">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Version</div>
+                <div style="font-weight: 700; color: var(--text-primary);">2.1.0</div>
+            </div>
+            <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); text-align: center;">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Framework</div>
+                <div style="font-weight: 700; color: var(--text-primary);">Django 4.2</div>
+            </div>
+            <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); text-align: center;">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Speech Engine</div>
+                <div style="font-weight: 700; color: var(--text-primary);">Web Speech API</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="animate-in delay-4">
+        <button type="submit" class="btn-primary-glow btn-lg" style="width: 100%; background: var(--admin-accent); max-width: 400px;">
+            💾 Save Global Settings
+        </button>
+    </div>
+</form>
+
+{% endblock %}

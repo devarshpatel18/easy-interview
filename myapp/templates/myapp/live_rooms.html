@@ -1,0 +1,97 @@
+{% extends 'myapp/base.html' %}
+{% block nav_live %}active{% endblock %}
+{% block page_title %}<span>Live Interview</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <div class="text-center" style="margin-bottom: 32px;">
+        <h1 class="page-title">📹 Live Interview Rooms</h1>
+        <p class="page-subtitle">
+            {% if is_expert %}
+            Create a live video interview room and invite candidates to join.
+            {% else %}
+            Join a live video interview session with an expert or HR.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+{% if is_expert %}
+<!-- Create Room Form -->
+<div class="glass-card animate-in delay-1" style="margin-bottom: 32px;">
+    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        <span>🎬</span> Create New Room
+    </h3>
+    <form method="POST">
+        {% csrf_token %}
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 2; min-width: 200px;">
+                <label class="form-label">Room Title</label>
+                <input type="text" name="title" placeholder="e.g. Frontend Developer Interview" value="Live Interview" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; box-sizing: border-box;">
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label">Invite Candidate (Optional)</label>
+                <select name="participant_id" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                    <option value="">-- No specific candidate --</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn-primary-glow" style="padding: 10px 24px;">🚀 Create Room</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Room List -->
+<div class="animate-in delay-2">
+    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">🏠 Your Rooms</h3>
+
+    {% if rooms %}
+    <div style="display: grid; gap: 16px;">
+        {% for room in rooms %}
+        <div class="glass-card" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; background: {% if room.is_active %}rgba(16, 185, 129, 0.15){% else %}rgba(239, 68, 68, 0.15){% endif %};">
+                {% if room.is_active %}📹{% else %}⏹️{% endif %}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <h4 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">{{ room.title }}</h4>
+                <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap;">
+                    <span>🕐 {{ room.created_at|date:"M d, Y h:i A" }}</span>
+                    <span>👤 Created by: {{ room.created_by.username }}</span>
+                    {% if room.participant %}
+                    <span>🎯 Candidate: {{ room.participant.username }}</span>
+                    {% endif %}
+                    {% if room.is_active %}
+                    <span style="color: #34d399; font-weight: 600;">● Active</span>
+                    {% else %}
+                    <span style="color: #ef4444; font-weight: 600;">● Ended</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                {% if room.is_active %}
+                <a href="{% url 'join_live_room' room.id %}" class="btn-primary-glow" style="padding: 8px 20px; font-size: 13px; text-decoration: none;">📹 Join</a>
+                {% if room.created_by == request.user or request.user.is_staff %}
+                <a href="{% url 'end_live_room' room.id %}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3); text-decoration: none;" onclick="return confirm('End this room?');">⏹️ End</a>
+                {% endif %}
+                {% else %}
+                <span class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; opacity: 0.5; cursor: default;">Ended</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass-card" style="text-align: center; padding: 48px; color: var(--text-muted);">
+        <p style="font-size: 48px; margin-bottom: 12px;">📹</p>
+        {% if is_expert %}
+        <p>No rooms yet. Create your first live interview room above!</p>
+        {% else %}
+        <p>No live interview rooms available. You'll see rooms here when an expert invites you.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

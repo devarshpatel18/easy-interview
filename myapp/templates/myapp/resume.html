@@ -1,0 +1,48 @@
+{% extends 'myapp/base.html' %}
+{% block nav_resume %}active{% endblock %}
+{% block page_title %}<span>Upload Resume</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <div class="text-center" style="margin-bottom: 32px;">
+        <h1 class="page-title">Upload Resume 📄</h1>
+        <p class="page-subtitle">Start by uploading your resume in PDF format (Max 3MB).</p>
+    </div>
+</div>
+
+<div class="glass-card animate-in delay-1">
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-group" style="margin-bottom: 28px;">
+            <label class="form-label" style="font-size: 15px; margin-bottom: 12px;">📤 Upload Your PDF Resume</label>
+            
+            {% if temp_resume_filename or latest_resume %}
+            <div style="padding: 12px 16px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-md); margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">📎</span>
+                <div>
+                    <div style="font-size: 14px; color: var(--text-primary); font-weight: 500;">
+                        Active Resume: <strong>{% if temp_resume_filename %}{{ temp_resume_filename }}{% else %}{{ latest_resume.resume.name|cut:"resumes/" }}{% endif %}</strong>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">You can proceed with this file or upload a new one to replace it.</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="upload-area">
+                <span class="upload-icon">📄</span>
+                <h4>Drag & Drop or Click to Upload</h4>
+                <p>Supports .pdf files only (max 3MB)</p>
+                <input type="file" name="resume" accept=".pdf" {% if not temp_resume_filename and not latest_resume %}required{% endif %}>
+            </div>
+            <div class="file-selected" id="file-selected"></div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn-primary-glow btn-lg" style="min-width: 280px;">
+                Upload & Continue →
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

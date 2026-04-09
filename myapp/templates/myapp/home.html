@@ -1,0 +1,68 @@
+{% extends 'myapp/base.html' %}
+{% block nav_home %}active{% endblock %}
+{% block page_title %}<span>Dashboard</span>{% endblock %}
+
+{% block content %}
+<div class="animate-in">
+    <h1 class="page-title">Welcome back, {{ request.user.username }}! 👋</h1>
+    <p class="page-subtitle">Ready to ace your next interview? Here's your quick overview.</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid animate-in delay-1">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_interviews }}</div>
+        <div class="stat-label">Total Interviews</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ completed_interviews }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ avg_score }}%</div>
+        <div class="stat-label">Average Score</div>
+    </div>
+</div>
+
+<!-- Feature Cards -->
+<div class="feature-grid">
+    <div class="feature-card animate-in delay-2">
+        <div class="feature-icon">🎤</div>
+        <h3>Start Interview</h3>
+        <p>AI generates tailored questions based on your resume. Speak your answers using the mic!</p>
+        <a href="{% url 'start_interview' %}" class="btn-success-glow">
+            Start Interview →
+        </a>
+    </div>
+
+    <div class="feature-card animate-in delay-3">
+        <div class="feature-icon">📊</div>
+        <h3>Feedback & Scores</h3>
+        <p>View AI-powered detailed feedback, scores, strengths, and areas of improvement.</p>
+        <a href="{% url 'history' %}" class="btn-outline-glass">
+            View Results →
+        </a>
+    </div>
+</div>
+
+{% if latest_interview %}
+<div class="glass-card mt-4 animate-in delay-4">
+    <h3 style="margin-bottom: 12px;">🏆 Latest Interview</h3>
+    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+        <span class="history-type {% if latest_interview.interview_type == 'technical' %}type-technical{% else %}type-hr{% endif %}">
+            {{ latest_interview.get_interview_type_display }}
+        </span>
+        <span style="color: var(--text-muted); font-size: 14px;">
+            {{ latest_interview.created_at|date:"M d, Y" }}
+        </span>
+        <span style="font-weight: 700; font-size: 18px; color: var(--accent-primary);">
+            {{ latest_interview.score_percentage }}%
+        </span>
+        <a href="{% url 'result' latest_interview.id %}" class="btn-outline-glass btn-sm" style="margin-left: auto;">
+            View Report →
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
