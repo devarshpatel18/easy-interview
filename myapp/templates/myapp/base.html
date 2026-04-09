@@ -37,12 +37,12 @@
             {% if request.user.is_expert or request.user.is_staff %}
             <!-- === EXPERT / ADMIN LINKS === -->
             <a href="{% url 'expert_dashboard' %}" class="nav-link {% block nav_expert_dash %}{% endblock %}">
-                <span class="nav-icon">📊</span> Expert Dashboard
+                <span class="nav-icon">📊</span> Dashboard
             </a>
-            <a href="{% url 'expert_questions' %}" class="nav-link {% block nav_expert %}{% endblock %}">
+            <a href="{% url 'expert_questions_dashboard' %}" class="nav-link {% block nav_expert %}{% endblock %}">
                 <span class="nav-icon">📝</span> Question Bank
             </a>
-            <a href="{% url 'live_rooms' %}" class="nav-link {% block nav_live %}{% endblock %}">
+            <a href="{% url 'expert_live_rooms_dashboard' %}" class="nav-link {% block nav_live %}{% endblock %}">
                 <span class="nav-icon">📹</span> Live Interview
             </a>
             {% else %}
@@ -97,8 +97,8 @@
                     </button>
                 <div class="dropdown-menu">
                     {% if request.user.is_expert or request.user.is_staff %}
-                    <a href="{% url 'expert_dashboard' %}" class="dropdown-item">📊 Expert Panel</a>
-                    <a href="{% url 'expert_questions' %}" class="dropdown-item">📝 Question Bank</a>
+                    <a href="{% url 'expert_dashboard' %}" class="dropdown-item">📊 Dashboard</a>
+                    <a href="{% url 'expert_questions_dashboard' %}" class="dropdown-item">📝 Question Bank</a>
                     {% else %}
                     <a href="{% url 'profile' %}" class="dropdown-item">👤 My Profile</a>
                     <a href="{% url 'settings' %}" class="dropdown-item">⚙️ Settings</a>
