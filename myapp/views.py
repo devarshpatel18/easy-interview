@@ -1481,7 +1481,8 @@ def send_room_invite(request, room_id):
     # Send email in background
     subject = f"Interview Invitation: {room.title} - Easy Interview"
     message = f"Hello {room.participant.username},\n\n" \
-              f"You have been invited to a live interview session with {request.user.username}.\n\n" \
+              f"You have been invited to a live interview session by {request.user.username}.\n\n" \
+              f"Interviewer: {request.user.username} ({request.user.email})\n" \
               f"Room: {room.title}\n" \
               f"Link: {join_url}\n\n" \
               f"Please click the link above or copy-paste it into your browser to join the session.\n\n" \

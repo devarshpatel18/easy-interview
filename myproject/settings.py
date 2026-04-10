@@ -119,7 +119,12 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'wvef jdyr bgko yhzl')
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 10
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.127.0.0.1,http://*.localhost').split(',')
+
+# Security settings for Render/HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
+
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.127.0.0.1,http://*.localhost,https://*.onrender.com').split(',')
 
 # ============================================
 # GOOGLE GEMINI API KEY
