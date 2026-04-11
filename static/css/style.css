@@ -1401,8 +1401,35 @@ a:hover { color: var(--accent-secondary); }
     }
     .profile-btn { padding: 6px 10px; gap: 6px; }
 
-    /* Mobile menu button */
-    .mobile-menu-btn { display: flex !important; }
+    /* Mobile menu button visibility */
+    .mobile-menu-btn { 
+        display: flex !important; 
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        color: var(--text-primary);
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        cursor: pointer;
+        z-index: 210;
+    }
+
+    /* Sidebar overlay fix */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 150;
+        transition: opacity 0.3s ease;
+    }
+    .sidebar-overlay.show {
+        display: block;
+    }
 
     /* Grids: single column */
     .feature-grid { grid-template-columns: 1fr; }
