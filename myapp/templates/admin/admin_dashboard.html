@@ -267,7 +267,7 @@
         }
     });
 
-    // 3. Score Distribution Chart
+    // 3. Score Performance Distribution Chart
     const scoreCtx = document.getElementById('scoreChart').getContext('2d');
     new Chart(scoreCtx, {
         type: 'bar',
@@ -277,21 +277,48 @@
                 label: 'Candidate Count',
                 data: {{ score_data|safe }},
                 backgroundColor: [
-                    'rgba(239, 68, 68, 0.6)',
-                    'rgba(245, 158, 11, 0.6)',
-                    'rgba(16, 185, 129, 0.6)'
+                    'rgba(239, 68, 68, 0.7)',  // Low - Coral Red
+                    'rgba(245, 158, 11, 0.7)', // Mid - Amber
+                    'rgba(16, 185, 129, 0.7)'  // High - Emerald
                 ],
-                borderRadius: 8,
-                borderWidth: 0
+                borderColor: [
+                    '#ef4444', 
+                    '#f59e0b', 
+                    '#10b981'
+                ],
+                borderWidth: 2,
+                borderRadius: 12,
+                hoverBackgroundColor: [
+                    'rgba(239, 68, 68, 0.9)',
+                    'rgba(245, 158, 11, 0.9)',
+                    'rgba(16, 185, 129, 0.9)'
+                ],
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: { 
+                legend: { display: false },
+                tooltip: { 
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#cbd5e1',
+                    padding: 12,
+                    cornerRadius: 8,
+                    displayColors: false
+                }
+            },
             scales: {
-                y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { stepSize: 1 } },
-                x: { grid: { display: false } }
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(255, 255, 255, 0.03)', borderDash: [5, 5] }, 
+                    ticks: { stepSize: 1, color: '#64748b' } 
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { weight: '600' } }
+                }
             }
         }
     });
