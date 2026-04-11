@@ -80,8 +80,19 @@ def register_view(request):
             messages.error(request, "This email is already registered")
             return redirect("register")
 
-        User.objects.create_user(username=username, email=email, password=password)
-        messages.success(request, "Registration successful! Please login.")
+        # FIRST USER IS ADMIN: If this is the first user ever, make them admin/expert
+        is_first_user = User.objects.count() == 0
+        user = User.objects.create_user(username=username, email=email, password=password)
+        
+        if is_first_user:
+            user.is_staff = True
+            user.is_superuser = True
+            user.is_expert = True
+            user.save()
+            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin & Expert access.")
+        else:
+            messages.success(request, "Registration successful! Please login.")
+            
         return redirect("login")
 
     return render(request, "myapp/register.html")
