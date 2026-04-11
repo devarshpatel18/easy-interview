@@ -79,14 +79,32 @@
         <!-- Skills Selection -->
         <div id="skills-section" class="form-group" style="margin-bottom: 32px;">
             <label class="form-label" style="font-size: 15px; margin-bottom: 12px;">🛠️ Select Skills / Technologies</label>
+            
+            {% if detected_skills %}
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: var(--radius-md);">
+                <span style="font-size: 13px; color: var(--accent-secondary); display: block; margin-bottom: 10px;">✨ AI Detected Skills from your Resume:</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    {% for skill in detected_skills %}
+                    <span class="skill-badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-primary); padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid rgba(99, 102, 241, 0.3);">
+                        {{ skill }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="skills-grid">
                 {% for value, label in skill_choices %}
                 <div>
-                    <input type="checkbox" name="skills" value="{{ value }}" id="skill-{{ value }}" class="skill-checkbox">
+                    <input type="checkbox" name="skills" value="{{ value }}" id="skill-{{ value }}" class="skill-checkbox"
+                        {% if label in detected_skills or value in detected_skills %}checked{% endif %}>
                     <label for="skill-{{ value }}" class="skill-label">{{ label }}</label>
                 </div>
                 {% endfor %}
             </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 12px;">
+                Note: Questions will be generated based on these skills and your resume content.
+            </p>
         </div>
 
         <div class="text-center" style="display: flex; gap: 16px; justify-content: center;">

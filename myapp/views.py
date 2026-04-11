@@ -17,7 +17,16 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .models import Interview, Question, Answer, SystemSettings, ExpertQuestion, LiveRoom
-from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report
+from django.db.models.functions import Length
+from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report, extract_skills_from_resume
+
+def cleanup_bad_data():
+    """One-time cleanup to remove garbage questions (shorter than 10 characters)."""
+    try:
+        ExpertQuestion.objects.annotate(text_len=Length('question_text')).filter(text_len__lt=10).delete()
+        Question.objects.annotate(text_len=Length('question_text')).filter(text_len__lt=10).delete()
+    except Exception as e:
+        print(f"Cleanup Error: {e}")
 
 User = get_user_model()
 
@@ -427,10 +436,23 @@ def configure_interview(request):
         messages.success(request, "Configuration saved successfully! Click 'Start Interview' to begin.")
         return redirect("home")
 
+    # Extract skills from resume for pre-selection
+    detected_skills = []
+    resume_path = None
+    if filename:
+        resume_path = os.path.join(settings.MEDIA_ROOT, 'resumes', filename)
+    elif latest_with_resume:
+        resume_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
+
+    if resume_path and os.path.exists(resume_path):
+        resume_text = extract_resume_text(resume_path)
+        detected_skills = extract_skills_from_resume(resume_text)
+
     return render(request, "myapp/configure_interview.html", {
         'skill_choices': Interview.SKILL_CHOICES,
         'has_new_upload': bool(filename),
         'latest_resume': latest_with_resume,
+        'detected_skills': detected_skills,
     })
 
 @login_required
@@ -487,14 +509,28 @@ def start_interview(request):
     # Get skills as a list for filtering and AI
     skills_list = interview.skills_list
 
-    # 1. Fetch matching expert questions (Up to 5)
+    # Get all previously seen questions for this user to avoid repeats
+    # Normalize by stripping whitespace and converting to lowercase for robust matching
+    seen_qs_raw = list(Question.objects.filter(
+        interview__user=request.user
+    ).values_list('question_text', flat=True))
+    seen_questions = [q.strip().lower() for q in seen_qs_raw if q]
+
+    # 1. Fetch matching expert questions (Up to 5, excluding junk ones)
     import random as _random
-    expert_qs = list(ExpertQuestion.objects.filter(
+    all_expert_qs = list(ExpertQuestion.objects.filter(
         skill__in=skills_list,
         difficulty=interview.difficulty_level,
-    ))
-    _random.shuffle(expert_qs)
-    picked_expert_qs = expert_qs[:5]
+    ).annotate(text_len=Length('question_text')).filter(text_len__gte=10))
+    
+    # Filter out seen ones manually for better matching (case-insensitive)
+    available_expert_qs = [
+        eq for eq in all_expert_qs 
+        if eq.question_text.strip().lower() not in seen_questions
+    ]
+    
+    _random.shuffle(available_expert_qs)
+    picked_expert_qs = available_expert_qs[:5]
 
     # 2. Add picked expert questions as Question objects
     for idx, eq in enumerate(picked_expert_qs):
@@ -513,7 +549,8 @@ def start_interview(request):
             interview.interview_type, 
             skills_list, 
             interview.difficulty_level,
-            count=needed_ai_count
+            count=needed_ai_count,
+            seen_questions=seen_questions # Pass seen list to AI
         )
         
         current_order = len(picked_expert_qs)
@@ -694,10 +731,21 @@ def retry_interview(request, interview_id=None):
         skills=source.skills,
     )
 
+    # Get all previously seen questions for this user to avoid repeats
+    seen_qs_raw = list(Question.objects.filter(
+        interview__user=request.user
+    ).values_list('question_text', flat=True))
+    seen_questions_normalized = [q.strip().lower() for q in seen_qs_raw if q]
+
     # Extract resume and generate fresh questions
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
-    questions_data = generate_questions(resume_text, interview.interview_type, interview.skills_list)
+    questions_data = generate_questions(
+        resume_text, 
+        interview.interview_type, 
+        interview.skills_list,
+        seen_questions=seen_qs_raw # Pass raw list to AI for context
+    )
 
     for idx, q_data in enumerate(questions_data):
         Question.objects.create(
@@ -884,6 +932,9 @@ def update_profile(request):
 def admin_dashboard(request):
     if not request.user.is_staff:
         return redirect("home")
+
+    # Clean up garbage data (shorter than 10 chars) automatically
+    cleanup_bad_data()
 
     from datetime import timedelta
 
@@ -1130,8 +1181,8 @@ def expert_questions(request):
             skill = request.POST.get("skill", "general")
             difficulty = request.POST.get("difficulty", "medium")
 
-            if not question_text:
-                messages.error(request, "Question text is required.")
+            if not question_text or len(question_text) < 10:
+                messages.error(request, "Question text is too short. Please provide a professional, complete question (min 10 characters).")
             else:
                 ExpertQuestion.objects.create(
                     question_text=question_text,
@@ -1403,8 +1454,8 @@ def expert_questions_dashboard(request):
             skill = request.POST.get("skill", "general")
             difficulty = request.POST.get("difficulty", "medium")
 
-            if not question_text:
-                messages.error(request, "Question text is required.")
+            if not question_text or len(question_text) < 10:
+                messages.error(request, "Question text is too short. Please provide a professional, complete question (min 10 characters).")
             else:
                 ExpertQuestion.objects.create(
                     question_text=question_text,

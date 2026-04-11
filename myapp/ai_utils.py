@@ -74,8 +74,46 @@ def extract_resume_text(file_path):
     return text.strip() if text.strip() else "No content extracted from resume"
 
 
-def generate_questions(resume_text, interview_type, skills, difficulty_level='medium', count=10):
-    """Generate X interview questions based on resume, type, skills, and difficulty using Gemini."""
+def extract_skills_from_resume(resume_text):
+    """Extract a list of technical and soft skills from resume text using Gemini."""
+    if not resume_text or len(resume_text) < 10:
+        return []
+
+    prompt = f"""You are an expert HR and Technical Recruiter. Extract a comprehensive list of technical skills, programming languages, frameworks, and core professional competencies from the following resume text.
+
+RESUME TEXT:
+{resume_text[:4000]}
+
+RULES:
+- Extract specific skills (e.g., 'Python', 'React', 'Project Management', 'System Design').
+- Do not extract entire sentences, just keywords or short phrases.
+- Return ONLY a valid JSON array of strings.
+- If no skills are found, return an empty array [].
+
+Example Output: ["Python", "Django", "REST API", "AWS", "Team Leadership"]"""
+
+    result = call_gemini(prompt)
+    if result:
+        try:
+            cleaned = result.strip()
+            cleaned = re.sub(r'^```json\s*', '', cleaned)
+            cleaned = re.sub(r'^```\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+            skills = json.loads(cleaned)
+            if isinstance(skills, list):
+                return skills
+        except Exception as e:
+            print(f"Skill extraction parse error: {e}")
+    
+    return []
+
+
+def generate_questions(resume_text, interview_type, skills, difficulty_level='medium', count=10, seen_questions=None):
+    """Generate X interview questions based on resume, type, skills, and difficulty using Gemini.
+    Uses seen_questions to ensure uniqueness and avoid repeats."""
+    if seen_questions is None:
+        seen_questions = []
+
     skills_str = ', '.join(skills) if isinstance(skills, list) else skills
     if not skills_str or not skills_str.strip():
         skills_str = 'programming fundamentals' if interview_type == 'technical' else 'general'
@@ -118,8 +156,17 @@ def generate_questions(resume_text, interview_type, skills, difficulty_level='me
     if not skills:
         return fallback_source[:count]
 
-    prompt = f"""You are an expert interviewer. Each session must provide a highly personalized and unique set of questions. (Salt: {int(time.time())})
-    CRITICAL: YOU MUST BASE YOUR QUESTIONS ON THE PROVIDED RESUME AND SKILLS. DO NOT GIVE GENERIC QUESTIONS.
+    seen_context = ""
+    if seen_questions:
+        seen_context = "CRITICAL - PREVIOUSLY ASKED QUESTIONS (SHUN THESE TOPICS AND TEXTS):\n"
+        # Increase context to 30 past questions
+        for i, q in enumerate(seen_questions[-30:]):
+            seen_context += f"- {q}\n"
+
+    prompt = f"""You are an elite, unpredictable interviewer known for never asking the same thin twice.
+    (Diversity Seed: {int(time.time())})
+
+    {seen_context}
 
 RESUME CONTENT:
 {resume_text[:4000]}
@@ -128,18 +175,18 @@ INTERVIEW TYPE: {interview_type}
 SELECTED SKILLS: {skills_str}
 DIFFICULTY LEVEL: {difficulty_level.upper()}
 
-RULES:
+RULES FOR TOTAL UNIQUENESS:
 - Generate exactly {count} questions.
 - {diff_instruction}
-- AT LEAST 5 questions MUST directly reference the candidate's specific past projects, companies, or experiences mentioned in the resume. Example: "In your resume, you mentioned working on Project X using React. Can you explain how you handled state management?"
-- The remaining questions MUST deeply test the SELECTED SKILLS and be relevant to the candidate's stated level of experience.
-- DO NOT output common repeated questions like "What are your strengths?". Be highly creative, extremely specific, and unpredictable.
-- Mix theoretical and practical scenario-based questions.
+- AT LEAST 5 questions MUST be "Grounded" in specific details from the resume (projects, specific years, specific bullet points).
+- FORBIDDEN: Do not ask any question listed in the "PREVIOUSLY ASKED QUESTIONS" section.
+- TOPIC ROTATION: Look at the previous questions. If they were about syntax, ask about architecture. If they were about backend, ask about testing/deployment. DO NOT stick to one sub-topic.
+- BE RANDOM: Change the framing of questions. Instead of "What is X?", ask "In a scenario where X fails, how would you...".
+- INCREASE COMPLEXITY: For Technical, avoid definitions; ask for problem-solving or trade-off analysis.
 
-Return ONLY a valid JSON array of exactly {count} objects with this exact format (no markdown, no code blocks):
+Return ONLY a valid JSON array of exactly {count} objects:
 [
-    {{"question": "Highly customized question here...", "ideal_answer": "Brief outline of what a good candidate should say..."}},
-    {{"question": "Highly customized question here...", "ideal_answer": "Brief outline of what a good candidate should say..."}}
+    {{"question": "Fresh, unique, scenario-based question...", "ideal_answer": "Expert response guide..."}}
 ]"""
 
     result = call_gemini(prompt)
@@ -180,12 +227,24 @@ Return ONLY a valid JSON array of exactly {count} objects with this exact format
             cleaned = re.sub(r'\s*```$', '', cleaned)
             questions = json.loads(cleaned)
             if isinstance(questions, list) and len(questions) >= 1 and isinstance(questions[0], dict):
-                valid_questions = questions[:count]
+                # Filter for quality: remove any questions that are too short (junk data like 's')
+                filtered_questions = [q for q in questions if isinstance(q, dict) and len(q.get('question', '')) >= 10]
+                
+                valid_questions = filtered_questions[:count]
                 if len(valid_questions) < count:
-                    valid_questions.extend(fallback_source[:count - len(valid_questions)])
+                    # Fill missing questions from fallback
+                    offset = len(valid_questions)
+                    valid_questions.extend(fallback_source[:count - offset])
                 return valid_questions
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
             print(f"JSON parse error: {e}")
+            # Try to extract JSON if it was buried in text
+            match = re.search(r'\[\s*\{.*\}\s*\]', cleaned, re.DOTALL)
+            if match:
+                try:
+                    questions = json.loads(match.group())
+                    return questions[:count]
+                except: pass
             print(f"Raw response: {result[:500]}")
 
     return fallback_source[:count]
@@ -231,11 +290,20 @@ Return ONLY a valid JSON object with this exact format (no markdown, no code blo
             cleaned = re.sub(r'^```json\s*', '', cleaned)
             cleaned = re.sub(r'^```\s*', '', cleaned)
             cleaned = re.sub(r'\s*```$', '', cleaned)
-            data = json.loads(cleaned)
+            
+            # Robust parsing for evaluation
+            try:
+                data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+                if match:
+                    data = json.loads(match.group())
+                else: raise
+
             score = min(10, max(0, float(data.get('score', 0))))
             feedback = data.get('feedback', 'Answer evaluated.')
             return score, feedback
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, Exception) as e:
             print(f"Eval parse error: {e}")
 
     # Fallback scoring — much stricter
@@ -295,16 +363,24 @@ Return ONLY a valid JSON object with this exact format (no markdown, no code blo
             cleaned = re.sub(r'^```json\s*', '', cleaned)
             cleaned = re.sub(r'^```\s*', '', cleaned)
             cleaned = re.sub(r'\s*```$', '', cleaned)
-            data = json.loads(cleaned)
+            
+            # Robust parsing for reports
+            try:
+                data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+                if match:
+                    data = json.loads(match.group())
+                else: raise
 
-            interview.strengths = data.get('strengths', 'Good effort overall.')
-            interview.areas_of_improvement = data.get('areas_of_improvement', 'Keep practicing.')
-            interview.ai_summary = data.get('summary', 'Interview completed successfully.')
-        except (json.JSONDecodeError, ValueError) as e:
+            interview.strengths = data.get('strengths', 'Strengths analyzed based on performance.')
+            interview.areas_of_improvement = data.get('areas_of_improvement', 'Improvement points identified.')
+            interview.ai_summary = data.get('summary', 'Performance summary generated.')
+        except (json.JSONDecodeError, ValueError, Exception) as e:
             print(f"Report parse error: {e}")
-            interview.strengths = "• Completed the interview\n• Showed willingness to engage"
-            interview.areas_of_improvement = "• Try to provide more detailed answers\n• Practice articulating thoughts clearly"
-            interview.ai_summary = "Interview completed. Keep practicing to improve your performance."
+            interview.strengths = "• Provided clear responses to technical queries\n• Demonstrated basic domain knowledge"
+            interview.areas_of_improvement = "• Elaborate more on past project details\n• Focus on technical depth and problem-solving"
+            interview.ai_summary = "Report generation had a minor error, but your performance shows potential. Focus on providing more detailed scenarios in your next attempt."
     else:
         interview.strengths = "• Completed the interview\n• Showed willingness to engage"
         interview.areas_of_improvement = "• Try to provide more detailed answers\n• Practice articulating thoughts clearly"

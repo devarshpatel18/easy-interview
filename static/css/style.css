@@ -1373,65 +1373,39 @@ a:hover { color: var(--accent-secondary); }
 /* --- Mobile & Tablet (All screens <= 1024px) --- */
 @media (max-width: 1024px) {
     /* Sidebar: hidden off-screen by default */
+    /* Sidebar: hidden off-screen by default */
     .sidebar {
         position: fixed;
-        left: -280px;
-        z-index: 200;
-        width: 260px;
-        transition: left 0.3s ease;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        transform: translateX(-105%);
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+        box-shadow: 20px 0 50px rgba(0,0,0,0.5);
     }
+    
     .sidebar.open { 
-        left: 0 !important; 
+        transform: translateX(0) !important; 
     }
 
-    /* Page content: full width, no margin */
-    .page-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-    }
-
-    .main-content { padding: 20px 16px; }
-
-    /* Topbar */
-    .topbar { padding: 12px 16px; }
-    .topbar-title { font-size: 16px; }
-
-    /* Profile btn: hide username text on smaller tablets/phones */
-    @media (max-width: 600px) {
-        .profile-btn span:not(:first-child):not(:last-child) {
-            display: none;
-        }
-        .profile-btn { padding: 6px 10px; gap: 6px; }
-    }
-
-    /* Mobile menu button visibility */
-    .mobile-menu-btn { 
-        display: flex !important; 
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-glass);
-        border: 1px solid var(--border-glass);
-        color: var(--text-primary);
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        cursor: pointer;
-        z-index: 210;
-    }
-
-    /* Sidebar overlay fix */
+    /* Sidebar Overlay */
     .sidebar-overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 150;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        z-index: 900;
+        opacity: 0;
         transition: opacity 0.3s ease;
     }
+    
     .sidebar-overlay.show {
-        display: block;
+        display: block !important;
+        opacity: 1 !important;
     }
 
     /* Grids: single column */
