@@ -1406,7 +1406,11 @@ def expert_login_view(request):
                 messages.error(request, "This account is not registered as an expert. Please use regular login.")
                 return redirect("expert_login")
             login(request, user_auth)
-            messages.success(request, "Expert login successful!")
+            messages.success(request, "Login successful!")
+            
+            # Priority to Admin Dashboard if staff member
+            if user_auth.is_staff:
+                return redirect("admin_dashboard")
             return redirect("expert_dashboard")
         else:
             messages.error(request, "Incorrect password. Please try again.")
