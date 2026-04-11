@@ -10,3 +10,4 @@ media/
 .idea/
 .vscode/
 *.log
+venv_new/

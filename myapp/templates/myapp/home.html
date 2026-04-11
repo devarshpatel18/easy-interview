@@ -24,6 +24,48 @@
     </div>
 </div>
 
+<!-- Upcoming Live Interviews -->
+{% if upcoming_interviews %}
+<div class="animate-in delay-2" style="margin-bottom: 32px;">
+    <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+        🗓️ Upcoming Live Interviews
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        {% for room in upcoming_interviews %}
+        <div class="glass-card" style="padding: 24px; border-top: 4px solid {% if room.status == 'live' %}#ef4444{% else %}#6366f1{% endif %};">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                <div>
+                    <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">{{ room.title }}</h4>
+                    <div style="font-size: 13px; color: var(--text-muted);">Expert: {{ room.created_by.get_full_name|default:room.created_by.username }}</div>
+                </div>
+                <span class="history-type {% if room.status == 'live' %}type-technical{% else %}type-hr{% endif %}" style="font-size: 11px;">
+                    {{ room.get_status_display }}
+                </span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 20px;">🕒</div>
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Time</div>
+                    <div style="font-size: 13px; font-weight: 600;">{{ room.scheduled_at|date:"M d, h:i A" }}</div>
+                </div>
+            </div>
+
+            {% if room.status == 'live' %}
+            <a href="{% url 'join_live_room' room.id %}" class="btn-primary-glow btn-sm" style="width: 100%; justify-content: center;">Join Interview Now</a>
+            {% elif room.created_by == request.user %}
+            <a href="{% url 'start_live_interview' room.id %}" class="btn-success-glow btn-sm" style="width: 100%; justify-content: center;">Start Interview Now</a>
+            {% else %}
+            <button class="btn-outline-glass btn-sm" style="width: 100%; justify-content: center; opacity: 0.6; cursor: wait;" title="Waits for expert to start" disabled>
+                Join Locked (Waiting for Expert)
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Feature Cards -->
 <div class="feature-grid">
     <div class="feature-card animate-in delay-2">

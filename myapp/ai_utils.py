@@ -77,6 +77,8 @@ def extract_resume_text(file_path):
 def generate_questions(resume_text, interview_type, skills, difficulty_level='medium', count=10):
     """Generate X interview questions based on resume, type, skills, and difficulty using Gemini."""
     skills_str = ', '.join(skills) if isinstance(skills, list) else skills
+    if not skills_str or not skills_str.strip():
+        skills_str = 'programming fundamentals' if interview_type == 'technical' else 'general'
 
     difficulty_instructions = {
         'easy': 'Generate EASY level questions focused on basic concepts, definitions, and fundamentals. Questions should be suitable for freshers or beginners.',
@@ -85,6 +87,36 @@ def generate_questions(resume_text, interview_type, skills, difficulty_level='me
     }
 
     diff_instruction = difficulty_instructions.get(difficulty_level, difficulty_instructions['medium'])
+
+    if interview_type == 'technical':
+        fallback_source = [
+            {"question": f"Explain the core concepts of {skills_str}. What makes it unique?", "ideal_answer": "Explain key features and paradigms."},
+            {"question": "Describe a challenging technical project you worked on. What was your approach?", "ideal_answer": "Structured problem-solving approach."},
+            {"question": f"What are design patterns you commonly use in {skills_str}?", "ideal_answer": "Common patterns and when to use them."},
+            {"question": "How do you handle debugging and troubleshooting in your code?", "ideal_answer": "Systematic debugging approach."},
+            {"question": "Explain the concept of scalability. How would you design a scalable system?", "ideal_answer": "Horizontal/vertical scaling, caching, load balancing."},
+            {"question": f"What are the best practices for writing clean, maintainable code in {skills_str}?", "ideal_answer": "Naming conventions, modularity, comments, testing."},
+            {"question": "Explain how you would optimize a slow database query.", "ideal_answer": "Indexing, query optimization, caching, denormalization."},
+            {"question": f"Describe the difference between various data structures and when to use them in {skills_str}.", "ideal_answer": "Arrays, linked lists, trees, hash maps with use cases."},
+            {"question": "How do you ensure code quality and prevent bugs in your projects?", "ideal_answer": "Code reviews, unit testing, CI/CD, linting."},
+            {"question": "Design a solution for a real-world problem using the skills on your resume.", "ideal_answer": "Structured approach with requirements, architecture, and tradeoffs."},
+        ]
+    else:
+        fallback_source = [
+            {"question": "Tell me about yourself and your professional journey.", "ideal_answer": "Concise professional summary."},
+            {"question": "Describe a challenging situation at work and how you handled it.", "ideal_answer": "STAR method response."},
+            {"question": "Where do you see yourself in 5 years?", "ideal_answer": "Growth-oriented career goals."},
+            {"question": "Why should we hire you for this position?", "ideal_answer": "Unique value proposition."},
+            {"question": "How do you handle pressure and tight deadlines?", "ideal_answer": "Time management and prioritization strategies."},
+            {"question": "Tell me about a time you worked in a team and faced a conflict.", "ideal_answer": "Conflict resolution and collaboration."},
+            {"question": "What is your greatest strength and how has it helped you professionally?", "ideal_answer": "Specific strength with real example."},
+            {"question": "Describe a situation where you had to learn something new quickly.", "ideal_answer": "Adaptability and learning approach."},
+            {"question": "How do you prioritize tasks when you have multiple deadlines?", "ideal_answer": "Organization and time management skills."},
+            {"question": "What motivates you to do your best work?", "ideal_answer": "Intrinsic and extrinsic motivation factors."},
+        ]
+
+    if not skills:
+        return fallback_source[:count]
 
     prompt = f"""You are an expert interviewer. Each session must provide a highly personalized and unique set of questions. (Salt: {int(time.time())})
     CRITICAL: YOU MUST BASE YOUR QUESTIONS ON THE PROVIDED RESUME AND SKILLS. DO NOT GIVE GENERIC QUESTIONS.
@@ -112,23 +144,8 @@ Return ONLY a valid JSON array of exactly {count} objects with this exact format
 
     result = call_gemini(prompt)
 
-    if result:
-        try:
-            # Clean up the response - remove markdown code blocks if present
-            cleaned = result.strip()
-            cleaned = re.sub(r'^```json\s*', '', cleaned)
-            cleaned = re.sub(r'^```\s*', '', cleaned)
-            cleaned = re.sub(r'\s*```$', '', cleaned)
-            questions = json.loads(cleaned)
-            if isinstance(questions, list) and len(questions) >= 1:
-                return questions[:count]
-        except json.JSONDecodeError as e:
-            print(f"JSON parse error: {e}")
-            print(f"Raw response: {result[:500]}")
-
-    # Fallback questions if API fails
     if interview_type == 'technical':
-        return [
+        fallback_source = [
             {"question": f"Explain the core concepts of {skills_str}. What makes it unique?", "ideal_answer": "Explain key features and paradigms."},
             {"question": "Describe a challenging technical project you worked on. What was your approach?", "ideal_answer": "Structured problem-solving approach."},
             {"question": f"What are design patterns you commonly use in {skills_str}?", "ideal_answer": "Common patterns and when to use them."},
@@ -141,7 +158,7 @@ Return ONLY a valid JSON array of exactly {count} objects with this exact format
             {"question": "Design a solution for a real-world problem using the skills on your resume.", "ideal_answer": "Structured approach with requirements, architecture, and tradeoffs."},
         ]
     else:
-        return [
+        fallback_source = [
             {"question": "Tell me about yourself and your professional journey.", "ideal_answer": "Concise professional summary."},
             {"question": "Describe a challenging situation at work and how you handled it.", "ideal_answer": "STAR method response."},
             {"question": "Where do you see yourself in 5 years?", "ideal_answer": "Growth-oriented career goals."},
@@ -153,6 +170,25 @@ Return ONLY a valid JSON array of exactly {count} objects with this exact format
             {"question": "How do you prioritize tasks when you have multiple deadlines?", "ideal_answer": "Organization and time management skills."},
             {"question": "What motivates you to do your best work?", "ideal_answer": "Intrinsic and extrinsic motivation factors."},
         ]
+
+    if result:
+        try:
+            # Clean up the response - remove markdown code blocks if present
+            cleaned = result.strip()
+            cleaned = re.sub(r'^```json\s*', '', cleaned)
+            cleaned = re.sub(r'^```\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+            questions = json.loads(cleaned)
+            if isinstance(questions, list) and len(questions) >= 1 and isinstance(questions[0], dict):
+                valid_questions = questions[:count]
+                if len(valid_questions) < count:
+                    valid_questions.extend(fallback_source[:count - len(valid_questions)])
+                return valid_questions
+        except (json.JSONDecodeError, TypeError, AttributeError) as e:
+            print(f"JSON parse error: {e}")
+            print(f"Raw response: {result[:500]}")
+
+    return fallback_source[:count]
 
 
 def evaluate_answer(question_text, user_answer, ideal_answer, interview_type):

@@ -32,10 +32,14 @@
             <div style="flex: 1; min-width: 200px;">
                 <label class="form-label">Invite Candidate (Optional)</label>
                 <select name="participant_id" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                    {% if users %}
                     <option value="">-- No specific candidate --</option>
                     {% for u in users %}
                     <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
                     {% endfor %}
+                    {% else %}
+                    <option value="">No candidates available</option>
+                    {% endif %}
                 </select>
             </div>
         </div>

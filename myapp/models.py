@@ -160,10 +160,20 @@ class ExpertQuestion(models.Model):
 # LIVE INTERVIEW ROOMS (Jitsi Meet)
 # -------------------------
 class LiveRoom(models.Model):
+    STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('live', 'Live'),
+        ('completed', 'Completed'),
+    ]
+
     room_name = models.CharField(max_length=100, unique=True)
     title = models.CharField(max_length=200, default='Live Interview')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_rooms')
     participant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='invited_rooms')
+    
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -55,13 +55,13 @@
 
             <div id="expired-msg" style="display: none; text-align: center; margin-top: 1rem;">
                 <div class="alert alert-error" style="margin-bottom: 1rem;">⏰ Your verification code has expired.</div>
-                <a href="{% url 'forgot_password' %}" class="btn-primary-glow btn-block btn-lg" style="text-decoration: none; display: inline-block; padding: 12px 24px;">
+                <a href="{% url 'resend_otp' %}" class="btn-primary-glow btn-block btn-lg" style="text-decoration: none; display: inline-block; padding: 12px 24px;">
                     Resend Code →
                 </a>
             </div>
 
             <div class="auth-footer">
-                Back to <a href="{% url 'forgot_password' %}">Email Entry</a>
+                Back to <a href="{% url 'forgot_password' %}">Back to Login</a>
             </div>
 
             <script>

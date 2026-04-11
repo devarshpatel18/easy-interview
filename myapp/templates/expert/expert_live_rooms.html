@@ -6,9 +6,8 @@
 <div class="animate-in">
     <div class="text-center" style="margin-bottom: 32px;">
         <h1 class="page-title">📹 Live Interview Rooms</h1>
-        <p class="page-subtitle">Create a live video interview room and invite candidates to join.</p>
-    </div>
-</div>
+<!-- Assigned Live Interviews -->
+    <p class="page-subtitle">View and manage your scheduled live interview sessions.</p>
 
 <!-- Create Room Form -->
 <div class="glass-card animate-in delay-1" style="margin-bottom: 32px;">
@@ -22,13 +21,18 @@
                 <label class="form-label">Room Title</label>
                 <input type="text" name="title" placeholder="e.g. Frontend Developer Interview" value="Live Interview" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; box-sizing: border-box;">
             </div>
+
             <div style="flex: 1; min-width: 200px;">
-                <label class="form-label">Invite Candidate (Optional)</label>
-                <select name="participant_id" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                <label class="form-label">Invite Candidate </label>
+                <select class="dark-select" name="participant_id" style="width: 100%; padding: 10px 14px; background-color: #1e1e2f; border: 1px solid #333333; border-radius: var(--radius-md); color: #ffffff; font-size: 14px;">
+                    {% if users %}
                     <option value="">-- No specific candidate --</option>
                     {% for u in users %}
                     <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
                     {% endfor %}
+                    {% else %}
+                    <option value="">No candidates available</option>
+                    {% endif %}
                 </select>
             </div>
         </div>
@@ -50,7 +54,7 @@
             <div style="flex: 1; min-width: 0;">
                 <h4 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">{{ room.title }}</h4>
                 <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap;">
-                    <span>🕐 {{ room.created_at|date:"M d, Y h:i A" }}</span>
+                    <span>🕐 {% if room.scheduled_at %}<strong style="color: #818cf8;">Scheduled:</strong> {{ room.scheduled_at|date:"M d, h:i A" }}{% else %}Created: {{ room.created_at|date:"M d, Y" }}{% endif %}</span>
                     {% if room.participant %}
                     <span>🎯 Candidate: {{ room.participant.username }}</span>
                     {% endif %}
@@ -79,4 +83,20 @@
     </div>
     {% endif %}
 </div>
+<style>
+/* Dark theme for dropdown */
+.dark-select {
+    background-color: #1e1e2f !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
+}
+.dark-select option {
+    background-color: #1e1e2f;
+    color: #ffffff;
+}
+.dark-select option:hover, .dark-select option:focus, .dark-select option:active, .dark-select option:checked {
+    background: linear-gradient(#2a2a40, #2a2a40);
+    background-color: #2a2a40 !important;
+}
+</style>
 {% endblock %}

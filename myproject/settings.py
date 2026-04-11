@@ -124,7 +124,7 @@ EMAIL_TIMEOUT = 10
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
 
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.127.0.0.1,http://*.localhost,https://*.onrender.com').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1,http://localhost,https://*.onrender.com').split(',')
 
 # ============================================
 # GOOGLE GEMINI API KEY

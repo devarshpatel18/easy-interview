@@ -7,5 +7,6 @@ if %errorlevel% neq 0 (
     call venv\Scripts\activate
 )
 echo Starting Django server on http://127.0.0.1:8000/ ...
-python manage.py runserver 127.0.0.1:8000
+echo (You can also access it on your phone using your computer's IP address)
+python manage.py runserver 0.0.0.0:8000
 pause

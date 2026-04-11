@@ -6,50 +6,104 @@
 <div class="animate-in">
     <div class="text-center" style="margin-bottom: 32px;">
         <h1 class="page-title">🎓 Welcome, {{ request.user.username }}!</h1>
-        <p class="page-subtitle">Manage your interview questions and live rooms from here.</p>
+        <p class="page-subtitle">Manage your assigned interviews and scheduled sessions.</p>
     </div>
 </div>
 
-<!-- Stats Cards -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 32px;" class="animate-in delay-1">
-    <div class="glass-card" style="text-align: center; padding: 28px 20px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">📝</div>
-        <div style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ total_questions }}</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">My Questions</div>
+<!-- Stats Summary -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 40px;" class="animate-in delay-1">
+    <div class="glass-card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 32px; margin-bottom: 8px;">📝</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent-primary);">{{ total_questions }}</div>
+        <div style="font-size: 13px; color: var(--text-muted);">Question Bank</div>
     </div>
-    <div class="glass-card" style="text-align: center; padding: 28px 20px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">📹</div>
-        <div style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ total_rooms }}</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Total Rooms</div>
-    </div>
-    <div class="glass-card" style="text-align: center; padding: 28px 20px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">🟢</div>
-        <div style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ active_rooms }}</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Active Rooms</div>
+    <div class="glass-card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 32px; margin-bottom: 8px;">🗓️</div>
+        <div style="font-size: 24px; font-weight: 800; color: #10b981;">{{ assigned_interviews.count }}</div>
+        <div style="font-size: 13px; color: var(--text-muted);">Assigned Interviews</div>
     </div>
 </div>
 
-<!-- Quick Actions -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;" class="animate-in delay-2">
-    <a href="{% url 'expert_questions_dashboard' %}" class="glass-card" style="text-decoration: none; padding: 32px; transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(99,102,241,0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">📝</div>
-            <div>
-                <h3 style="font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Question Bank</h3>
-                <p style="font-size: 13px; color: var(--text-muted);">Create and manage interview questions that appear in candidate interviews</p>
+<!-- Assigned Interviews Section -->
+<div class="animate-in delay-2">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; font-weight: 700;">📋 Assigned Interviews</h2>
+        <a href="{% url 'expert_questions_dashboard' %}" class="btn-outline-glass btn-sm">Manage Questions →</a>
+    </div>
+
+    {% if assigned_interviews %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+        {% for room in assigned_interviews %}
+        <div class="glass-card" style="padding: 24px; position: relative; overflow: hidden; border-left: 4px solid {% if room.status == 'live' %}#ef4444{% elif room.status == 'completed' %}#10b981{% else %}#6366f1{% endif %};">
+            {% if room.status == 'live' %}
+            <div style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span> LIVE NOW
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text-primary);">{{ room.title }}</h3>
+                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px;">
+                    <span>👤 Candidate: <strong>{{ room.participant.username|default:"Unassigned" }}</strong></span>
+                </div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                    <div style="font-size: 18px;">📅</div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Scheduled Date & Time</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                            {% if room.scheduled_at %}
+                                {{ room.scheduled_at|date:"F j, Y" }} at {{ room.scheduled_at|date:"h:i A" }}
+                            {% else %}
+                                <span style="color: var(--text-muted); font-weight: normal; font-style: italic;">No specific time set</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 18px;">🛡️</div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+                        <div style="font-size: 14px; font-weight: 600; color: {% if room.status == 'live' %}#ef4444{% elif room.status == 'completed' %}#10b981{% else %}#6366f1{% endif %};">
+                            {{ room.get_status_display }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                {% if room.status == 'scheduled' %}
+                <a href="{% url 'start_live_interview' room.id %}" class="btn-success-glow btn-sm" style="grid-column: span 2; justify-content: center;">Start Interview</a>
+                {% elif room.status == 'live' %}
+                <a href="{% url 'expert_join_live_room' room.id %}" class="btn-primary-glow btn-sm" style="grid-column: span 2; justify-content: center;">Join Interview</a>
+                {% endif %}
+                
+                <a href="{% url 'send_room_invite' room.id %}" class="btn-outline-glass btn-sm" style="justify-content: center;">
+                    ✉️ Send Link
+                </a>
+                <button class="btn-outline-glass btn-sm" style="justify-content: center; opacity: 0.5; cursor: not-allowed;" disabled>
+                    ⚙️ Edit
+                </button>
             </div>
         </div>
-    </a>
-
-    <a href="{% url 'expert_live_rooms_dashboard' %}" class="glass-card" style="text-decoration: none; padding: 32px; transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(168,85,247,0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(168, 85, 247, 0.15); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">📹</div>
-            <div>
-                <h3 style="font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Live Interview Rooms</h3>
-                <p style="font-size: 13px; color: var(--text-muted);">Create and join live video interview sessions with candidates</p>
-            </div>
-        </div>
-    </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass-card" style="padding: 60px; text-align: center; color: var(--text-muted);">
+        <div style="font-size: 48px; margin-bottom: 20px;">📭</div>
+        <h3>No assigned interviews yet.</h3>
+        <p>Your upcoming scheduled sessions will appear here.</p>
+    </div>
+    {% endif %}
 </div>
 
+<style>
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+</style>
 {% endblock %}

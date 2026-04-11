@@ -89,9 +89,8 @@ def login_view(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=email).first()
+        if not user:
             messages.error(request, "Email not found. Please create an account.")
             return redirect("login")
 
@@ -99,6 +98,11 @@ def login_view(request):
         if user_auth is not None:
             login(request, user_auth)
             messages.success(request, "Login successful!")
+            
+            # Check for 'next' parameter in URL
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
             
             # Smart Redirection based on priority
             if user_auth.is_expert:
@@ -152,16 +156,15 @@ def forgot_password(request):
             return redirect("forgot_password")
             
         # 2. Check if user exists
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=email).first()
+        if not user:
             messages.error(request, "No account found with this email address.")
             return redirect("forgot_password")
             
         # 3. Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
         
-        # 4. Store in session with expiry timestamp (3 minutes)
+        # 4. Store in session with expiry timestamp (1 minute)
         request.session['reset_otp'] = otp
         request.session['reset_email'] = email
         request.session['otp_verified'] = False
@@ -169,7 +172,7 @@ def forgot_password(request):
         
         # 5. Send OTP email in background thread (non-blocking)
         subject = "Your Password Reset Code - Easy Interview"
-        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nThis code will expire in 3 minutes.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
+        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
         
         email_thread = threading.Thread(
             target=_send_otp_email,
@@ -192,10 +195,10 @@ def verify_otp(request):
     if not email:
         return redirect("forgot_password")
 
-    # Calculate remaining seconds for countdown timer (3-minute = 180s window)
+    # Calculate remaining seconds for countdown timer (1-minute = 60s window)
     otp_created_at = request.session.get('otp_created_at', 0)
     elapsed = time.time() - otp_created_at
-    remaining_seconds = max(0, int(180 - elapsed))
+    remaining_seconds = max(0, int(60 - elapsed))
 
     if request.method == "POST":
         user_otp = request.POST.get("otp", "").strip()
@@ -222,6 +225,42 @@ def verify_otp(request):
         'remaining_seconds': remaining_seconds,
     })
 
+def resend_otp(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+        
+    email = request.session.get('reset_email')
+    if not email:
+        messages.error(request, "Please request a password reset first.")
+        return redirect("forgot_password")
+        
+    user = User.objects.filter(email=email).first()
+    if not user:
+        messages.error(request, "No account found with this email address.")
+        return redirect("forgot_password")
+        
+    # Generate new 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+    
+    # Store in session with new expiry (1 minute)
+    request.session['reset_otp'] = otp
+    request.session['otp_verified'] = False
+    request.session['otp_created_at'] = time.time()
+    
+    # Send OTP email
+    subject = "Your New Password Reset Code - Easy Interview"
+    message = f"Hello {user.username},\n\nYour new password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
+    
+    email_thread = threading.Thread(
+        target=_send_otp_email,
+        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [email]),
+        daemon=True,
+    )
+    email_thread.start()
+    
+    messages.success(request, f"A new code has been sent to {email}")
+    return redirect("verify_otp")
+
 def reset_password_otp(request):
     if request.user.is_authenticated:
         return redirect("home")
@@ -245,9 +284,10 @@ def reset_password_otp(request):
             messages.error(request, "Password must contain: " + ", ".join(pwd_errors))
             return redirect("reset_password_otp")
             
-        user = User.objects.get(email=email)
-        user.set_password(password)
-        user.save()
+        user = User.objects.filter(email=email).first()
+        if user:
+            user.set_password(password)
+            user.save()
         
         # Clear session
         del request.session['reset_otp']
@@ -283,12 +323,20 @@ def home(request):
     latest_interview = completed_set.order_by('-completed_at').first()
     has_resume = interviews.filter(resume__isnull=False).exclude(resume='').exists()
 
+    # Upcoming Live Interviews
+    upcoming_interviews = LiveRoom.objects.filter(
+        Q(participant=request.user) | Q(created_by=request.user), 
+        is_active=True,
+        status__in=['scheduled', 'live']
+    ).order_by('scheduled_at').distinct()
+
     context = {
         'total_interviews': total_interviews,
         'completed_interviews': completed_interviews,
         'avg_score': avg_score,
         'latest_interview': latest_interview,
         'has_resume': has_resume,
+        'upcoming_interviews': upcoming_interviews,
     }
     return render(request, "myapp/home.html", context)
 
@@ -436,6 +484,9 @@ def start_interview(request):
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
 
+    # Get skills as a list for filtering and AI
+    skills_list = interview.skills_list
+
     # 1. Fetch matching expert questions (Up to 5)
     import random as _random
     expert_qs = list(ExpertQuestion.objects.filter(
@@ -512,8 +563,7 @@ def take_interview(request, interview_id):
     }
     
     timer_minutes = difficulty_timers.get(interview.difficulty_level, 25)
-    if system_settings and interview.difficulty_level in difficulty_timers:
-        system_settings.interview_timer = timer_minutes
+    # Note: We use timer_minutes for local calculation, no need to overwrite global system_settings.interview_timer
 
     # === TIMER PERSISTENCE: compute remaining seconds ===
     total_seconds = timer_minutes * 60
@@ -1208,8 +1258,9 @@ def join_live_room(request, room_id):
 
     # Only creator, participant, or admin can join
     if room.created_by != request.user and room.participant != request.user and not request.user.is_staff:
-        messages.error(request, "You don't have access to this room.")
-        return redirect("live_rooms")
+        expected = room.participant.username if room.participant else "the assigned expert"
+        messages.error(request, f"Access denied. This room is reserved for {expected}. You are currently logged in as {request.user.username}.")
+        return redirect("home")
 
     return render(request, "myapp/live_room.html", {
         "room": room,
@@ -1253,9 +1304,8 @@ def expert_login_view(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=email).first()
+        if not user:
             messages.error(request, "Email not found. Please create an expert account.")
             return redirect("expert_login")
 
@@ -1323,13 +1373,16 @@ def expert_dashboard(request):
         return redirect("home")
 
     total_questions = ExpertQuestion.objects.filter(created_by=request.user).count()
-    total_rooms = LiveRoom.objects.filter(created_by=request.user).count()
-    active_rooms = LiveRoom.objects.filter(created_by=request.user, is_active=True).count()
+    
+    # Assigned Interviews for Expert
+    assigned_interviews = LiveRoom.objects.filter(
+        created_by=request.user, 
+        is_active=True
+    ).order_by('scheduled_at')
 
     return render(request, "expert/expert_dashboard.html", {
         "total_questions": total_questions,
-        "total_rooms": total_rooms,
-        "active_rooms": active_rooms,
+        "assigned_interviews": assigned_interviews,
     })
 
 
@@ -1407,12 +1460,14 @@ def expert_live_rooms_dashboard(request):
     if request.method == "POST":
         title = request.POST.get("title", "Live Interview").strip()
         participant_id = request.POST.get("participant_id", "").strip()
+        scheduled_at = request.POST.get("scheduled_at")
         room_name = f"easy-interview-{uuid.uuid4().hex[:12]}"
 
         room = LiveRoom.objects.create(
             room_name=room_name,
             title=title or "Live Interview",
             created_by=request.user,
+            scheduled_at=scheduled_at if scheduled_at else None,
         )
 
         if participant_id:
@@ -1452,6 +1507,15 @@ def expert_join_live_room(request, room_id):
     })
 
 
+@login_required
+def start_live_interview(request, room_id):
+    """Transition a scheduled interview to Live status."""
+    room = get_object_or_404(LiveRoom, id=room_id, created_by=request.user)
+    room.status = 'live'
+    room.save()
+    messages.success(request, f"Interview '{room.title}' is now LIVE.")
+    return redirect("expert_join_live_room", room_id=room.id)
+
 def expert_logout(request):
     """Logout from expert panel."""
     logout(request)
@@ -1477,16 +1541,34 @@ def send_room_invite(request, room_id):
 
     # Build join URL
     join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
+    
+    # MOBILE FIX: If using 127.0.0.1 or localhost, replace with actual local IP
+    # so the link works when clicked on a mobile phone (same Wi-Fi)
+    import socket
+    try:
+        current_host = request.get_host().split(':')[0]
+        if current_host in ['127.0.0.1', 'localhost']:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80)) # Doesn't actually send data
+            local_ip = s.getsockname()[0]
+            s.close()
+            join_url = join_url.replace(current_host, local_ip)
+    except Exception:
+        pass
+
+    # Format date for email
+    scheduled_time = room.scheduled_at.strftime("%B %d, %Y at %I:%M %p") if room.scheduled_at else "TBD"
 
     # Send email in background
     subject = f"Interview Invitation: {room.title} - Easy Interview"
     message = f"Hello {room.participant.username},\n\n" \
-              f"You have been invited to a live interview session by {request.user.username}.\n\n" \
-              f"Interviewer: {request.user.username} ({request.user.email})\n" \
-              f"Room: {room.title}\n" \
-              f"Link: {join_url}\n\n" \
-              f"Please click the link above or copy-paste it into your browser to join the session.\n\n" \
-              f"Thanks,\nThe Easy Interview Team"
+              f"You have been invited to a live interview session.\n\n" \
+              f"Interviewer: {request.user.username}\n" \
+              f"Interview Title: {room.title}\n" \
+              f"Scheduled Date & Time: {scheduled_time}\n" \
+              f"Unique Join Link: {join_url}\n\n" \
+              f"Please click the link above at the scheduled time to join the session.\n\n" \
+              f"Best regards,\nThe Easy Interview Team"
 
     email_thread = threading.Thread(
         target=_send_otp_email,

@@ -12,6 +12,7 @@ urlpatterns = [
     # ---------- PASSWORD RESET (OTP FLOW) ----------
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('resend-otp/', views.resend_otp, name='resend_otp'),
     path('reset-password-otp/', views.reset_password_otp, name='reset_password_otp'),
 
     # ---------- MAIN FEATURES ----------
@@ -56,6 +57,7 @@ urlpatterns = [
     path('expert/dashboard/questions/', views.expert_questions_dashboard, name='expert_questions_dashboard'),
     path('expert/dashboard/live-rooms/', views.expert_live_rooms_dashboard, name='expert_live_rooms_dashboard'),
     path('expert/dashboard/live-room/<int:room_id>/', views.expert_join_live_room, name='expert_join_live_room'),
+    path('expert/dashboard/live-room/start/<int:room_id>/', views.start_live_interview, name='start_live_interview'),
     path('expert/dashboard/live-room/send-invite/<int:room_id>/', views.send_room_invite, name='send_room_invite'),
     path('expert/logout/', views.expert_logout, name='expert_logout'),
 
