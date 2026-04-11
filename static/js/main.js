@@ -25,13 +25,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Mobile sidebar toggle
+    // Mobile sidebar toggle (Hardened)
     const mobileBtn = document.querySelector('.mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
 
     if (mobileBtn && sidebar) {
-        mobileBtn.addEventListener('click', function() {
+        mobileBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('Mobile menu clicked');
             sidebar.classList.toggle('open');
             if (overlay) overlay.classList.toggle('show');
         });
@@ -42,6 +44,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 overlay.classList.remove('show');
             });
         }
+        
+        // Close on link click (mobile)
+        sidebar.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 1024) {
+                    sidebar.classList.remove('open');
+                    if (overlay) overlay.classList.remove('show');
+                }
+            });
+        });
     }
 
     // File upload area
