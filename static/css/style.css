@@ -181,6 +181,12 @@ a:hover { color: var(--accent-secondary); }
     padding: 0;
     min-height: 100vh;
     background: var(--bg-primary);
+    transition: var(--transition);
+}
+
+/* Mobile Menu Button - Hidden on Desktop */
+.mobile-menu-btn { 
+    display: none; 
 }
 
 /* ===== TOPBAR ===== */
@@ -1385,8 +1391,8 @@ a:hover { color: var(--accent-secondary); }
 
     /* Page content: full width */
     .page-content {
-        margin-left: 0;
-        width: 100%;
+        margin-left: 0 !important;
+        width: 100% !important;
     }
 
     .main-content { padding: 20px 16px; }
