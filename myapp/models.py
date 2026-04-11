@@ -128,6 +128,7 @@ class SystemSettings(models.Model):
     interview_timer = models.IntegerField(default=30)
     maintenance_mode = models.BooleanField(default=False)
     interview_duration = models.IntegerField(default=30)
+    site_base_url = models.URLField(default='http://127.0.0.1:8000', help_text="The public URL of your site (e.g. https://easy-interview.onrender.com)")
 
     def __str__(self):
         return "System Settings"

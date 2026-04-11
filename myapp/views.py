@@ -1159,6 +1159,7 @@ def admin_settings(request):
         settings_obj.allow_registration = 'allow_registration' in request.POST
         settings_obj.interview_timer = request.POST.get("interview_timer", 30)
         settings_obj.maintenance_mode = 'maintenance_mode' in request.POST
+        settings_obj.site_base_url = request.POST.get("site_base_url", "http://127.0.0.1:8000").strip()
         settings_obj.save()
         messages.success(request, "Settings saved successfully!")
     return render(request, "admin/admin_settings.html", {"settings": settings_obj})
@@ -1619,21 +1620,26 @@ def send_room_invite(request, room_id):
         return redirect("expert_join_live_room", room_id=room.id)
 
     # Build join URL
-    join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
-    
-    # MOBILE FIX: If using 127.0.0.1 or localhost, replace with actual local IP
-    # so the link works when clicked on a mobile phone (same Wi-Fi)
-    import socket
-    try:
-        current_host = request.get_host().split(':')[0]
-        if current_host in ['127.0.0.1', 'localhost']:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80)) # Doesn't actually send data
-            local_ip = s.getsockname()[0]
-            s.close()
-            join_url = join_url.replace(current_host, local_ip)
-    except Exception:
-        pass
+    settings_obj = SystemSettings.objects.first()
+    if settings_obj and settings_obj.site_base_url and '127.0.0.1' not in settings_obj.site_base_url and 'localhost' not in settings_obj.site_base_url:
+        # Use the configured public URL
+        base = settings_obj.site_base_url.rstrip('/')
+        join_path = reverse('join_live_room', args=[room.id])
+        join_url = f"{base}{join_path}"
+    else:
+        # Fallback to current host with local IP fix
+        join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
+        import socket
+        try:
+            current_host = request.get_host().split(':')[0]
+            if current_host in ['127.0.0.1', 'localhost']:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                s.close()
+                join_url = join_url.replace(current_host, local_ip)
+        except Exception:
+            pass
 
     # Format date for email
     scheduled_time = room.scheduled_at.strftime("%B %d, %Y at %I:%M %p") if room.scheduled_at else "TBD"
