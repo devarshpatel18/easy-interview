@@ -1447,10 +1447,19 @@ def expert_register_view(request):
             messages.error(request, "This email is already registered")
             return redirect("expert_register")
 
+        # FIRST USER IS ADMIN: If this is the first user ever, make them admin/superuser too
+        is_first_user = User.objects.count() == 0
         user = User.objects.create_user(username=username, email=email, password=password)
         user.is_expert = True
+        
+        if is_first_user:
+            user.is_staff = True
+            user.is_superuser = True
+            messages.success(request, "Expert registration successful! You are the first user, so you have been also granted Admin access.")
+        else:
+            messages.success(request, "Expert registration successful! Please login.")
+            
         user.save()
-        messages.success(request, "Expert registration successful! Please login.")
         return redirect("expert_login")
 
     return render(request, "myapp/expert_register.html")
