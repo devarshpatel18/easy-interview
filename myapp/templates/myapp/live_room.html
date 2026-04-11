@@ -59,11 +59,41 @@
     </div>
 
     {% if room.is_active %}
-    <!-- Mobile Redirect Fix: If on mobile/insecure context, offer a direct link -->
-    <div id="mobile-join-fix" style="display: none;" class="glass-card animate-in" style="margin-bottom: 20px; text-align: center; border: 1px solid #818cf8; background: rgba(129, 140, 248, 0.1);">
-        <p style="margin-bottom: 12px; font-size: 14px;">📱 <strong>Mobile detected:</strong> To enable camera/mic on your phone, join the meeting directly:</p>
-        <button onclick="openDirectJitsi()" class="btn-primary-glow" style="padding: 12px 24px;">🚀 Join Interview Directly</button>
-        <p style="margin-top: 10px; font-size: 11px; color: var(--text-muted);">This bypasses browser restrictions on local networks.</p>
+    <!-- Localhost Sharing Warning (Expert Side Only) -->
+    <div id="localhost-warning" style="display: none; padding: 20px; border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-lg); margin-bottom: 24px;" class="animate-in">
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+            <div style="font-size: 24px;">⚠️</div>
+            <div>
+                <h4 style="color: #f59e0b; margin-bottom: 8px; font-weight: 700;">Local Sharing Detected</h4>
+                <p style="font-size: 14px; color: var(--text-primary); margin-bottom: 12px;">
+                    You are accessing this room via <strong>127.0.0.1 (Localhost)</strong>. 
+                    Links created here will <strong>NOT work</strong> on mobile phones or other computers.
+                </p>
+                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-size: 13px;">
+                    <p style="margin-bottom: 8px;"><strong>How to share with candidates:</strong></p>
+                    <ul style="padding-left: 20px;">
+                        <li>To test on mobile, use your site on <strong>Render</strong> (e.g., easy-interview.onrender.com).</li>
+                        <li>Or, use your laptop's Private IP (e.g., 192.168.x.x) if you are on the same WiFi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Redirect Fix -->
+    <div id="mobile-join-fix" style="display: none;" class="glass-card animate-in">
+        <div style="padding: 24px; text-align: center; border: 1px solid #818cf8; background: rgba(129, 140, 248, 0.05); border-radius: var(--radius-lg);">
+            <h3 style="color: #818cf8; margin-bottom: 12px;">🚀 Accessing from Mobile?</h3>
+            <p style="margin-bottom: 20px; font-size: 14px; color: var(--text-muted);">
+                Browsers on mobile often block camera/mic inside frames. Join the interview directly for the best experience.
+            </p>
+            <button onclick="openDirectJitsi()" class="btn-primary-glow" style="padding: 14px 32px; font-size: 16px;">
+                Join Interview Directly →
+            </button>
+            <div style="margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+                (This ensures your Camera and Microphone work correctly)
+            </div>
+        </div>
     </div>
 
     <div id="jitsi-wrapper-main" class="glass-card" style="padding: 0; overflow: hidden; border-radius: 16px; margin-bottom: 20px;">
@@ -123,11 +153,16 @@
 
     const api = new JitsiMeetExternalAPI(domain, options);
 
+    // LOCALHOST DETECTION
+    if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+        document.getElementById('localhost-warning').style.display = 'block';
+    }
+
     // MOBILE DETECTION & FIX
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
         document.getElementById('mobile-join-fix').style.display = 'block';
-        document.getElementById('jitsi-wrapper-main').style.opacity = '0.5';
+        document.getElementById('jitsi-wrapper-main').style.display = 'none'; // Hide the iframe entirely on mobile
     }
 
     function openDirectJitsi() {
