@@ -936,6 +936,34 @@ def admin_dashboard(request):
     # Clean up garbage data (shorter than 10 chars) automatically
     cleanup_bad_data()
 
+    # Handle demo data generation if requested
+    if request.GET.get('generate_demo') == 'true':
+        import random
+        from datetime import timedelta
+        try:
+            # Create a few test interviews with diverse scores
+            # Low (20%), Mid (55%), High (85%)
+            score_targets = [0.2, 0.2, 0.55, 0.55, 0.55, 0.85] 
+            for target_pct in score_targets:
+                max_score = 100
+                total_score = int(max_score * (target_pct + random.uniform(-0.05, 0.05)))
+                Interview.objects.create(
+                    user=request.user,
+                    interview_type=random.choice(['technical', 'hr']),
+                    is_completed=True,
+                    total_score=total_score,
+                    max_score=max_score,
+                    completed_at=timezone.now() - timedelta(days=random.randint(0, 5)),
+                    skills="Demo Data",
+                    strengths="• Good effort in demo\n• Clear communication",
+                    areas_of_improvement="• Improve depth\n• Practice timing",
+                    ai_summary="This is an automatically generated demo interview."
+                )
+            messages.success(request, "🎉 Demo data generated successfully! The charts are now populated.")
+        except Exception as e:
+            messages.error(request, f"Error generating demo data: {e}")
+        return redirect("admin_dashboard")
+
     from datetime import timedelta
 
     today = timezone.now().date()

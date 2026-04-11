@@ -4,9 +4,14 @@
 
 {% block content %}
 <!-- Welcome Banner -->
-<div class="animate-in" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05)); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 32px;">
-    <h1 style="font-size: 24px; font-weight: 800; margin-bottom: 6px;">Welcome back, {{ request.user.username }} 👋</h1>
-    <p style="color: var(--text-muted); font-size: 14px;">Here's what's happening on your platform today.</p>
+<div class="animate-in" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05)); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="font-size: 24px; font-weight: 800; margin-bottom: 6px;">Welcome back, {{ request.user.username }} 👋</h1>
+        <p style="color: var(--text-muted); font-size: 14px;">Here's what's happening on your platform today.</p>
+    </div>
+    <a href="?generate_demo=true" class="btn-outline-glass" style="font-size: 12px; border-color: rgba(99, 102, 241, 0.3); color: #818cf8; text-decoration: none; padding: 10px 16px; border-radius: 8px;" onclick="return confirm('Generate sample interviews to populate the graphs?')">
+        ✨ Generate Demo Data
+    </a>
 </div>
 
 <!-- Primary Stats Row -->
