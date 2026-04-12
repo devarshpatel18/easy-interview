@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.db.models import Avg, Count, Q, F
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .models import Interview, Question, Answer, SystemSettings
