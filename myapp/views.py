@@ -1679,19 +1679,23 @@ def send_room_invite(request, room_id):
         return redirect("expert_join_live_room", room_id=room.id)
 
     # Build join URL
+    # Build join URL
     settings_obj = SystemSettings.objects.first()
-    if settings_obj and settings_obj.site_base_url and '127.0.0.1' not in settings_obj.site_base_url and 'localhost' not in settings_obj.site_base_url:
-        # Use the configured public URL
+    join_path = reverse('join_live_room', args=[room.id])
+    
+    if settings_obj and settings_obj.site_base_url and 'http' in settings_obj.site_base_url:
+        # Use the configured public URL (Production)
         base = settings_obj.site_base_url.rstrip('/')
-        join_path = reverse('join_live_room', args=[room.id])
         join_url = f"{base}{join_path}"
     else:
-        # Fallback to current host with local IP fix
-        join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
+        # Fallback for dynamic host detection
+        join_url = request.build_absolute_uri(join_path)
+        
+        # Local IP fix (if on local network)
         import socket
         try:
             current_host = request.get_host().split(':')[0]
-            if current_host in ['127.0.0.1', 'localhost']:
+            if current_host in ['127.0.0.1', 'localhost', '0.0.0.0']:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.connect(("8.8.8.8", 80))
                 local_ip = s.getsockname()[0]

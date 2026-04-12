@@ -13,7 +13,8 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 
 
 def call_gemini(prompt):
-    """Call the Gemini API with a text prompt and return the response text."""
+    """Call the Gemini API with a text prompt and return the response text.
+    Includes retry logic for 429 (Too Many Requests) errors."""
     api_key = settings.GEMINI_API_KEY
     if not api_key or api_key == 'PASTE_YOUR_GEMINI_API_KEY_HERE':
         return None
@@ -27,19 +28,36 @@ def call_gemini(prompt):
         }
     }
 
-    try:
-        response = requests.post(
-            f"{GEMINI_API_URL}?key={api_key}",
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        return None
+    max_retries = 3
+    retry_delay = 2  # Start with 2 seconds
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                f"{GEMINI_API_URL}?key={api_key}",
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            
+            if response.status_code == 429:
+                print(f"Gemini Rate Limit (429) hit. Retrying in {retry_delay}s... (Attempt {attempt+1}/{max_retries})")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+                continue
+                
+            response.raise_for_status()
+            data = response.json()
+            return data['candidates'][0]['content']['parts'][0]['text']
+            
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"Gemini Attempt {attempt+1} failed: {e}. Retrying...")
+                time.sleep(1)
+                continue
+            print(f"Gemini API Error after {max_retries} attempts: {e}")
+            return None
+    return None
 
 
 def extract_resume_text(file_path):
