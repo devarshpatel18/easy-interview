@@ -1723,7 +1723,7 @@ def send_room_invite(request, room_id):
     if success:
         messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
     else:
-        messages.error(request, f"Email Failed: {error}. Please check your SendGrid API Key.")
+        messages.error(request, f"Email Failed: {error}. Please check your BREVO_API_KEY on Render.")
 
     return redirect("expert_join_live_room", room_id=room.id)
 
