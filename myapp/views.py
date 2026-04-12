@@ -965,7 +965,10 @@ def admin_dashboard(request):
         import random
         from datetime import timedelta
         try:
-            # 1. Ensure demo users exist
+            # 1. Clear old demo data to make room for new users
+            Interview.objects.filter(skills="Demo Data").delete()
+
+            # 2. Ensure demo users exist
             demo_names = ['devarsh', 'het', 'jeel']
             demo_users = []
             for name in demo_names:
@@ -978,7 +981,7 @@ def admin_dashboard(request):
                     d_user.save()
                 demo_users.append(d_user)
 
-            # 2. Create a few test interviews with diverse scores
+            # 3. Create a few test interviews with diverse scores
             # Low (20%), Mid (55%), High (85%)
             score_targets = [0.2, 0.2, 0.55, 0.55, 0.55, 0.85] 
             for target_pct in score_targets:
@@ -996,7 +999,7 @@ def admin_dashboard(request):
                     areas_of_improvement="• Improve depth\n• Practice timing",
                     ai_summary="This is an automatically generated demo interview."
                 )
-            messages.success(request, "🎉 Demo data generated for users: devarsh, het, and jeel!")
+            messages.success(request, "🎉 Dashboard cleared and refreshed with new data for devarsh, het, and jeel!")
         except Exception as e:
             messages.error(request, f"Error generating demo data: {e}")
         return redirect("admin_dashboard")
