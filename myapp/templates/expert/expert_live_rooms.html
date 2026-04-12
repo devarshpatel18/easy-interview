@@ -1,102 +1,144 @@
 {% extends 'expert/expert_base.html' %}
-{% block nav_live %}active{% endblock %}
-{% block page_title %}<span>Live Interview</span>{% endblock %}
 
-{% block content %}
-<div class="animate-in">
-    <div class="text-center" style="margin-bottom: 32px;">
-        <h1 class="page-title">📹 Live Interview Rooms</h1>
-<!-- Assigned Live Interviews -->
-    <p class="page-subtitle">View and manage your scheduled live interview sessions.</p>
-
-<!-- Create Room Form -->
-<div class="glass-card animate-in delay-1" style="margin-bottom: 32px;">
-    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-        <span>🎬</span> Create New Room
-    </h3>
-    <form method="POST">
-        {% csrf_token %}
-        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
-            <div style="flex: 2; min-width: 200px;">
-                <label class="form-label">Room Title</label>
-                <input type="text" name="title" placeholder="e.g. Frontend Developer Interview" value="Live Interview" style="width: 100%; padding: 10px 14px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; box-sizing: border-box;">
-            </div>
-
-            <div style="flex: 1; min-width: 200px;">
-                <label class="form-label">Invite Candidate </label>
-                <select class="dark-select" name="participant_id" style="width: 100%; padding: 10px 14px; background-color: #1e1e2f; border: 1px solid #333333; border-radius: var(--radius-md); color: #ffffff; font-size: 14px;">
-                    {% if users %}
-                    <option value="">-- No specific candidate --</option>
-                    {% for u in users %}
-                    <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
-                    {% endfor %}
-                    {% else %}
-                    <option value="">No candidates available</option>
-                    {% endif %}
-                </select>
-            </div>
-        </div>
-        <button type="submit" class="btn-primary-glow" style="padding: 10px 24px; background: linear-gradient(135deg, #6366f1, #a855f7);">🚀 Create Room</button>
-    </form>
+{% block expert_content %}
+<div class="dashboard-header d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">Live Interview Rooms</h2>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal">
+        <i class="fas fa-plus mr-2"></i>Create New Room
+    </button>
 </div>
 
-<!-- Room List -->
-<div class="animate-in delay-2">
-    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">🏠 Your Rooms</h3>
-
-    {% if rooms %}
-    <div style="display: grid; gap: 16px;">
-        {% for room in rooms %}
-        <div class="glass-card" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; background: {% if room.is_active %}rgba(99, 102, 241, 0.15){% else %}rgba(239, 68, 68, 0.15){% endif %};">
-                {% if room.is_active %}📹{% else %}⏹️{% endif %}
+<!-- Modal: Create Room -->
+<div class="modal fade" id="createRoomModal" tabindex="-1" aria-labelledby="createRoomModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: #1a1c23; color: white; border: 1px solid #333;">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title" id="createRoomModalLabel">Create Live Interview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <h4 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">{{ room.title }}</h4>
-                <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap;">
-                    <span>🕐 {% if room.scheduled_at %}<strong style="color: #818cf8;">Scheduled:</strong> {{ room.scheduled_at|date:"M d, h:i A" }}{% else %}Created: {{ room.created_at|date:"M d, Y" }}{% endif %}</span>
-                    {% if room.participant %}
-                    <span>🎯 Candidate: {{ room.participant.username }}</span>
-                    {% endif %}
-                    {% if room.is_active %}
-                    <span style="color: #818cf8; font-weight: 600;">● Active</span>
-                    {% else %}
-                    <span style="color: #ef4444; font-weight: 600;">● Ended</span>
-                    {% endif %}
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Interview Title</label>
+                        <input type="text" name="title" class="form-control" placeholder="e.g. Senior Frontend Interview" required style="background: #2d2d39; border-color: #444; color: white;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Candidate</label>
+                        <select name="participant_id" class="form-select" required style="background: #2d2d39; border-color: #444; color: white;">
+                            <option value="">-- Choose Candidate --</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Scheduled Time</label>
+                        <input type="datetime-local" name="scheduled_at" class="form-control" required style="background: #2d2d39; border-color: #444; color: white;">
+                    </div>
                 </div>
-            </div>
-            <div style="display: flex; gap: 8px; flex-shrink: 0;">
-                {% if room.is_active %}
-                <a href="{% url 'expert_join_live_room' room.id %}" class="btn-primary-glow" style="padding: 8px 20px; font-size: 13px; text-decoration: none; background: linear-gradient(135deg, #6366f1, #a855f7);">📹 Join</a>
-                <a href="{% url 'end_live_room' room.id %}" class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3); text-decoration: none;" onclick="return confirm('End this room?');">⏹️ End</a>
-                {% else %}
-                <span class="btn-outline-glass" style="padding: 8px 16px; font-size: 13px; opacity: 0.5; cursor: default;">Ended</span>
-                {% endif %}
-            </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Room</button>
+                </div>
+            </form>
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div class="glass-card" style="text-align: center; padding: 48px; color: var(--text-muted);">
-        <p style="font-size: 48px; margin-bottom: 12px;">📹</p>
-        <p>No rooms yet. Create your first live interview room above!</p>
-    </div>
-    {% endif %}
 </div>
-<style>
-/* Dark theme for dropdown */
-.dark-select {
-    background-color: #1e1e2f !important;
-    color: #ffffff !important;
-    border: 1px solid #333333 !important;
+
+<div class="card bg-dark text-white border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr style="background: #1a1c23;">
+                        <th class="border-0 py-3 pl-4">Title</th>
+                        <th class="border-0 py-3">Candidate</th>
+                        <th class="border-0 py-3">Scheduled At</th>
+                        <th class="border-0 py-3">Status</th>
+                        <th class="border-0 py-3 pr-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td class="py-3 pl-4">
+                            <span class="font-weight-bold">{{ room.title }}</span><br>
+                            <small class="text-muted">{{ room.room_name }}</small>
+                        </td>
+                        <td class="py-3">
+                            {% if room.participant %}
+                                {{ room.participant.username }}
+                            {% else %}
+                                <span class="text-muted">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3">
+                            {% if room.scheduled_at %}
+                                {{ room.scheduled_at|date:"M d, Y H:i" }}
+                            {% else %}
+                                <span class="text-muted">Not scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3">
+                            {% if room.status == 'live' %}
+                                <span class="badge badge-success px-2 py-1">LIVE</span>
+                            {% elif room.status == 'completed' %}
+                                <span class="badge badge-secondary px-2 py-1">COMPLETED</span>
+                            {% else %}
+                                <span class="badge badge-primary px-2 py-1">SCHEDULED</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 pr-4 text-right">
+                            <div class="btn-group">
+                                <!-- COPY INVITE LINK BUTTON (Once and for All Fix) -->
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="copyToClipboard('{{ room.absolute_join_url }}', this)" title="Copy Invite Link">
+                                    <i class="fas fa-copy"></i> Copy Link
+                                </button>
+                                
+                                <a href="{% url 'send_room_invite' room.id %}" class="btn btn-sm btn-outline-warning" title="Resend Email">
+                                    <i class="fas fa-paper-plane"></i>
+                                </a>
+
+                                <a href="{% url 'expert_join_live_room' room.id %}" class="btn btn-sm btn-success ml-1">
+                                    <i class="fas fa-door-open mr-1"></i>Join Room
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-5 text-center text-muted">
+                            <i class="fas fa-video fa-3x mb-3 d-block"></i>
+                            No live interview rooms found. Create one to get started!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Copy to Clipboard Script -->
+<script>
+function copyToClipboard(text, btn) {
+    const dummy = document.createElement("textarea");
+    document.body.appendChild(dummy);
+    dummy.value = text;
+    dummy.select();
+    document.execCommand("copy");
+    document.body.removeChild(dummy);
+    
+    // Feedback
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    btn.classList.replace('btn-outline-info', 'btn-success');
+    
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.replace('btn-success', 'btn-outline-info');
+    }, 2000);
 }
-.dark-select option {
-    background-color: #1e1e2f;
-    color: #ffffff;
-}
-.dark-select option:hover, .dark-select option:focus, .dark-select option:active, .dark-select option:checked {
-    background: linear-gradient(#2a2a40, #2a2a40);
-    background-color: #2a2a40 !important;
-}
-</style>
+</script>
 {% endblock %}

@@ -1446,6 +1446,10 @@ def expert_live_rooms_dashboard(request):
 
     users = User.objects.filter(is_staff=False, is_active=True).exclude(id=request.user.id).order_by('username')
 
+    # Calculate absolute URLs for each room
+    for room in rooms:
+        room.absolute_join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
+
     return render(request, "expert/expert_live_rooms.html", {
         "rooms": rooms,
         "users": users,
@@ -1457,10 +1461,8 @@ def expert_join_live_room(request, room_id):
     """Join a live room — rendered inside expert dashboard layout."""
     room = get_object_or_404(LiveRoom, id=room_id)
 
-    # Access check relaxed: Any logged in user who has the unique ID/link can join.
-    if not room.is_active and not request.user.is_staff:
-        messages.error(request, "This interview room has already been closed.")
-        return redirect("expert_live_rooms_dashboard")
+    # Calculate absolute URL for this room
+    room.absolute_join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
 
     return render(request, "expert/expert_live_room.html", {
         "room": room,
@@ -1530,13 +1532,16 @@ def send_room_invite(request, room_id):
               f"Please click the link above at the scheduled time to join the session.\n\n" \
               f"Best regards,\nThe Easy Interview Team"
 
-    try:
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], fail_silently=False)
-        messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
-    except Exception as e:
-        messages.warning(request, f"Note: Email server was blocked by host, but the invite is active! Please manually share this link with the candidate: {join_url}")
+    # Send email in background to prevent page hangs on Render
+    email_thread = threading.Thread(
+        target=send_mail,
+        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], False),
+        daemon=True,
+    )
+    email_thread.start()
 
-    return redirect("expert_join_live_room", room_id=room.id)
+    messages.success(request, f"Invitation link sent to the candidate! You can also copy the link from your dashboard.")
+    return redirect("expert_live_rooms_dashboard")
 
 def debug_email_sync(request):
     """Diagnostic view to send a test email synchronously and show any errors."""
