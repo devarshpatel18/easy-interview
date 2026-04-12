@@ -61,6 +61,7 @@ urlpatterns = [
     path('expert/dashboard/live-room/<int:room_id>/', views.expert_join_live_room, name='expert_join_live_room'),
     path('expert/dashboard/live-room/start/<int:room_id>/', views.start_live_interview, name='start_live_interview'),
     path('expert/dashboard/live-room/send-invite/<int:room_id>/', views.send_room_invite, name='send_room_invite'),
+    path('debug-email/', views.debug_email_sync, name='debug_email_sync'),
     path('expert/logout/', views.expert_logout, name='expert_logout'),
 
     # === LIVE INTERVIEW FEATURE ===

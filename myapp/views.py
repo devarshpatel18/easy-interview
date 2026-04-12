@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.db.models import Avg, Count, Q, F
 from django.conf import settings
@@ -1539,6 +1539,24 @@ def send_room_invite(request, room_id):
     messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
     return redirect("expert_join_live_room", room_id=room.id)
 
+def debug_email_sync(request):
+    """Diagnostic view to send a test email synchronously and show any errors."""
+    if not request.user.is_staff:
+        return HttpResponse("Admin access required.")
+    
+    from django.core.mail import send_mail
+    from django.conf import settings
+    import traceback
+    
+    subject = "Diagnostic Test Email"
+    message = "This is a synchronous test email to check for SMTP errors."
+    recipient = request.user.email or "deepkevadiya63@gmail.com"
+    
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
+        return HttpResponse(f"Successfully sent test email to {recipient}!")
+    except Exception as e:
+        error_details = traceback.format_exc()
+        return HttpResponse(f"<h2>Email Failed!</h2><pre>{error_details}</pre>")
+
 # === END EXPERT DASHBOARD FEATURE ===
-
-
