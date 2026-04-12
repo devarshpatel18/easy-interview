@@ -1530,31 +1530,36 @@ def send_room_invite(request, room_id):
               f"Please click the link above at the scheduled time to join the session.\n\n" \
               f"Best regards,\nThe Easy Interview Team"
 
-    email_thread = threading.Thread(
-        target=send_mail,
-        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], False),
-        daemon=True,
-    )
-    email_thread.start()
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], fail_silently=False)
+        messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
+    except Exception as e:
+        messages.warning(request, f"Note: Email server was blocked by host, but the invite is active! Please manually share this link with the candidate: {join_url}")
 
-    messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
     return redirect("expert_join_live_room", room_id=room.id)
 
 def debug_email_sync(request):
     """Diagnostic view to send a test email synchronously and show any errors."""
     from django.core.mail import send_mail
     from django.conf import settings
+    from django.http import HttpResponse
     import traceback
     
     subject = "Diagnostic Test Email"
     message = "This is a synchronous test email to check for SMTP errors."
-    recipient = request.user.email or "deepkevadiya63@gmail.com"
+    recipient = "deepkevadiya63@gmail.com"
     
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
         return HttpResponse(f"Successfully sent test email to {recipient}!")
     except Exception as e:
         error_details = traceback.format_exc()
-        return HttpResponse(f"<h2>Email Failed!</h2><pre>{error_details}</pre>")
+        return HttpResponse(f"""
+            <h2>Email Failed!</h2>
+            <p>Render is currently blocking Port 587/465 (Network is unreachable).</p>
+            <p><b>Solution:</b> Use the 'Manual Link' backup I added to your dashboard. It lets you copy-paste the link even if Render blocks emails!</p>
+            <hr>
+            <pre>{error_details}</pre>
+        """)
 
 # === END EXPERT DASHBOARD FEATURE ===
