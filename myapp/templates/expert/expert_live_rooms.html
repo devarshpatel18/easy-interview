@@ -4,122 +4,111 @@
 
 {% block content %}
 <div class="animate-in">
-    <div class="text-center" style="margin-bottom: 32px;">
-        <h1 class="page-title">🎥 Live Interview Rooms</h1>
-        <p class="page-subtitle">Create and manage real-time interview sessions with your candidates.</p>
-    </div>
-</div>
-
-<!-- Header Actions -->
-<div style="display: flex; justify-content: flex-end; margin-bottom: 32px;" class="animate-in delay-1">
-    <button type="button" class="btn-primary-glow" onclick="document.getElementById('createRoomModal').style.display='block'">
-        <i class="fas fa-plus mr-2"></i>Create New Room
-    </button>
-</div>
-
-<!-- Grid of Active Rooms -->
-<div class="animate-in delay-2">
-    {% if rooms %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
-        {% for room in rooms %}
-        <div class="glass-card" style="padding: 24px; position: relative; overflow: hidden; border-left: 4px solid {% if room.status == 'live' %}#ef4444{% elif room.status == 'completed' %}#10b981{% else %}#6366f1{% endif %};">
-            
-            {% if room.status == 'live' %}
-            <div style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span> LIVE NOW
-            </div>
-            {% endif %}
-
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text-primary);">{{ room.title }}</h3>
-                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px;">
-                    <span>👤 Candidate: <strong>{{ room.participant.username|default:"Unassigned" }}</strong></span>
-                </div>
-            </div>
-
-            <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                    <div style="font-size: 18px;">📅</div>
-                    <div>
-                        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Scheduled Date & Time</div>
-                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
-                            {% if room.scheduled_at %}
-                                {{ room.scheduled_at|date:"F j, Y" }} at {{ room.scheduled_at|date:"h:i A" }}
-                            {% else %}
-                                <span style="color: var(--text-muted); font-weight: normal; font-style: italic;">No specific time set</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="font-size: 18px;">🛡️</div>
-                    <div>
-                        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-                        <div style="font-size: 14px; font-weight: 600; color: {% if room.status == 'live' %}#ef4444{% elif room.status == 'completed' %}#10b981{% else %}#6366f1{% endif %};">
-                            {{ room.get_status_display }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                {% if room.status == 'scheduled' %}
-                <a href="{% url 'start_live_interview' room.id %}" class="btn-success-glow btn-sm" style="grid-column: span 2; justify-content: center;">Start Interview</a>
-                {% elif room.status == 'live' %}
-                <a href="{% url 'expert_join_live_room' room.id %}" class="btn-primary-glow btn-sm" style="grid-column: span 2; justify-content: center;">Join Interview</a>
-                {% endif %}
-                
-                <!-- Send Link Button (Old UI Style) -->
-                <a href="{% url 'send_room_invite' room.id %}" class="btn-outline-glass btn-sm" style="justify-content: center;">
-                    ✉️ Send Link
-                </a>
-                
-                <!-- Copy Link Button (Backup Fix) -->
-                <button class="btn-outline-glass btn-sm" onclick="copyToClipboard('{{ room.absolute_join_url }}', this)" style="justify-content: center;">
-                    🔗 Copy Link
-                </button>
-            </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1 class="page-title" style="font-size: 24px;">🎥 Live Interview Rooms</h1>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <p class="page-subtitle" style="margin: 0;">View and manage your scheduled live interview sessions.</p>
+            <a href="{% url 'expert_logout' %}" class="btn-outline-glass" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 10px; font-size: 11px;">
+                🚪 Logout
+            </a>
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div class="glass-card" style="padding: 60px; text-align: center; color: var(--text-muted);">
-        <div style="font-size: 48px; margin-bottom: 20px;">📭</div>
-        <h3>No interview rooms yet.</h3>
-        <p>Your created interview sessions will appear here.</p>
-    </div>
-    {% endif %}
-</div>
 
-<!-- Modal: Create Room (Restored Old Design) -->
-<div id="createRoomModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); align-items: center; justify-content: center;">
-    <div class="glass-card" style="max-width: 500px; width: 90%; margin: auto; position: relative;">
-        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 24px;">🎥 Create Live Interview</h3>
+    <!-- 📝 Create New Room (Exact Screenshot Match) -->
+    <div class="glass-card" style="padding: 32px; margin-bottom: 32px; background: rgba(30,30,50,0.4);">
+        <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 24px; color: var(--text-muted); text-transform: uppercase;">
+            <i class="fas fa-edit mr-2"></i> Create New Room
+        </h3>
         <form method="POST">
             {% csrf_token %}
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">INTERVIEW TITLE</label>
-                <input type="text" name="title" class="form-control" placeholder="e.g. Senior Frontend Interview" required style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 24px;">
+                <div class="form-group">
+                    <label style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 12px; letter-spacing: 0.5px;">ROOM TITLE</label>
+                    <input type="text" name="title" class="form-control" placeholder="Live Interview" value="Live Interview" required 
+                        style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 20px; color: white;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 12px; letter-spacing: 0.5px;">INVITE CANDIDATE (OPTIONAL)</label>
+                    <select name="participant_id" class="form-select" 
+                        style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 20px; color: white; appearance: none; cursor: pointer;">
+                        <option value="">-- No specific candidate --</option>
+                        {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">SELECT CANDIDATE</label>
-                <select name="participant_id" class="form-select" required style="width: 100%; padding: 12px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
-                    <option value="">-- Choose Candidate --</option>
-                    {% for u in users %}
-                        <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">SCHEDULED TIME</label>
-                <input type="datetime-local" name="scheduled_at" class="form-control" required style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
-            </div>
-
-            <div style="display: flex; gap: 12px; margin-top: 32px;">
-                <button type="button" class="btn-outline-glass" style="flex:1" onclick="document.getElementById('createRoomModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn-primary-glow" style="flex:1">Create Room</button>
+            
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 16px;">
+                <div class="form-group">
+                    <input type="datetime-local" name="scheduled_at" class="form-control" 
+                        style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 16px; color: white; font-size: 12px;">
+                </div>
+                <button type="submit" class="btn-primary-glow" style="padding: 12px 32px; border-radius: 12px; background: #6366f1; font-size: 12px; font-weight: 600;">
+                    🚀 Create Room
+                </button>
             </div>
         </form>
+    </div>
+
+    <!-- 🏠 Your Rooms (Horizontal Style Match) -->
+    <div class="animate-in delay-1">
+        <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 20px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+            <span>🏠</span> Your Rooms
+        </h3>
+
+        {% if rooms %}
+            {% for room in rooms %}
+            <div class="glass-card" style="padding: 16px 24px; margin-bottom: 16px; display: flex; align-items: center; gap: 24px; background: rgba(30,30,45,0.3);">
+                <!-- Blue Icon Icon (From Screenshot) -->
+                <div style="width: 32px; height: 32px; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #3b82f6;">
+                    <i class="fas fa-video" style="font-size: 14px;"></i>
+                </div>
+                
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                        <h4 style="font-size: 15px; font-weight: 700; margin: 0; color: white; letter-spacing: 0.3px;">{{ room.title }}</h4>
+                        <span style="font-size: 10px; color: {% if room.status == 'live' %}#ef4444{% elif room.status == 'completed' %}#10b981{% else %}#10b981{% endif %}; font-weight: 700; text-transform: uppercase;">
+                            {{ room.get_status_display }}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 16px; font-size: 11px; color: #94a3b8;">
+                        <span>Created: {{ room.created_at|date:"M d, Y" }}</span>
+                        <span>Candidate: <span style="color: #6366f1; font-weight: 600;">{{ room.participant.username|default:"None" }}</span></span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Copy Link (Added per request) -->
+                    <button class="btn-outline-glass" onclick="copyToClipboard('{{ room.absolute_join_url }}', this)" 
+                        style="padding: 7px 14px; border-radius: 8px; font-size: 11px; color: #94a3b8; border-color: rgba(255,255,255,0.1);">
+                        🔗 Copy Link
+                    </button>
+
+                    <!-- Send Link -->
+                    <a href="{% url 'send_room_invite' room.id %}" class="btn-outline-glass" 
+                        style="padding: 7px 14px; border-radius: 8px; font-size: 11px; color: #94a3b8; border-color: rgba(255,255,255,0.1);">
+                        ✉️ Send Link
+                    </a>
+
+                    <!-- Join/Start/Ended -->
+                    {% if room.status == 'completed' %}
+                        <span style="font-size: 11px; color: #ef4444; font-weight: 700; text-transform: uppercase; padding: 0 12px;">Ended</span>
+                    {% else %}
+                        <a href="{% url 'expert_join_live_room' room.id %}" class="btn-primary-glow" 
+                            style="padding: 8px 24px; border-radius: 8px; font-size: 11px; background: #6366f1; font-weight: 700;">
+                            Join Room
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="glass-card" style="padding: 80px; text-align: center; color: var(--text-muted); background: rgba(30,30,45,0.2);">
+                <i class="fas fa-video-slash" style="font-size: 32px; margin-bottom: 16px; opacity: 0.2;"></i>
+                <p style="font-size: 14px;">No rooms yet. Create your first live interview room above!</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -136,18 +125,5 @@ function copyToClipboard(text, btn) {
     btn.innerHTML = '✅ Copied!';
     setTimeout(() => { btn.innerHTML = originalText; }, 2000);
 }
-
-// Close modal on outside click
-document.getElementById('createRoomModal').addEventListener('click', function(e) {
-    if (e.target === this) this.style.display = 'none';
-});
 </script>
-
-<style>
-@keyframes pulse {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-</style>
 {% endblock %}
