@@ -1,51 +1,45 @@
 import requests
 import json
+import os
 from django.conf import settings
 
 def send_email_api(subject, message, recipient_email):
     """
-    Sends an email using the SendGrid API via HTTP POST.
-    This bypasses SMTP port blocking on Render.
+    Sends an email using the Brevo (Sendinblue) API via HTTP POST.
+    This bypasses Render's SMTP block.
     """
-    api_key = getattr(settings, 'SENDGRID_API_KEY', None)
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+    # Use Brevo API Key instead
+    api_key = getattr(settings, 'BREVO_API_KEY', os.getenv('BREVO_API_KEY', ''))
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'devarshrupareliya07@gmail.com')
 
     if not api_key:
-        print("SENDGRID ERROR: SENDGRID_API_KEY not found in settings.")
+        print("BREVO ERROR: BREVO_API_KEY not found.")
         return False, "API Key missing"
 
-    url = "https://api.sendgrid.com/v3/mail/send"
+    url = "https://api.brevo.com/v3/smtp/email"
     
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
     }
     
     data = {
-        "personalizations": [
-            {
-                "to": [{"email": recipient_email}],
-                "subject": subject
-            }
-        ],
-        "from": {"email": from_email},
-        "content": [
-            {
-                "type": "text/plain",
-                "value": message
-            }
-        ]
+        "sender": {"email": from_email, "name": "Easy Interview"},
+        "to": [{"email": recipient_email}],
+        "subject": subject,
+        "textContent": message
     }
 
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
-        if response.status_code == 202:
-            print(f"Email successfully queued via SendGrid API to {recipient_email}")
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        if response.status_code in [201, 200, 202]:
+            print(f"Email successfully sent via Brevo API to {recipient_email}")
             return True, "Sent"
         else:
             error_data = response.json()
-            print(f"SENDGRID API ERROR: {response.status_code} - {error_data}")
-            return False, f"SendGrid Error: {response.status_code}"
+            print(f"BREVO API ERROR: {response.status_code} - {error_data}")
+            return False, f"Brevo Error: {response.status_code}"
     except Exception as e:
-        print(f"SENDGRID REQUEST FAILED: {e}")
+        print(f"BREVO REQUEST FAILED: {e}")
         return False, str(e)
