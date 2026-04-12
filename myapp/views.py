@@ -1342,6 +1342,7 @@ def expert_dashboard(request):
     return render(request, "expert/expert_dashboard.html", {
         "total_questions": total_questions,
         "assigned_interviews": assigned_interviews,
+        "rooms": assigned_interviews, # Compatibility for old/new templates
     })
 
 
@@ -1452,6 +1453,7 @@ def expert_live_rooms_dashboard(request):
 
     return render(request, "expert/expert_live_rooms.html", {
         "rooms": rooms,
+        "assigned_interviews": rooms, # Compatibility for old/new templates
         "users": users,
     })
 
@@ -1501,22 +1503,15 @@ def send_room_invite(request, room_id):
         messages.error(request, "Candidate has no email address associated with their account.")
         return redirect("expert_join_live_room", room_id=room.id)
 
-    # Build join URL
+    # Force the correct production domain in invitation links
     join_url = request.build_absolute_uri(reverse('join_live_room', args=[room.id]))
+    if '127.0.0.1' in join_url or 'localhost' in join_url:
+        join_url = join_url.replace('http://127.0.0.1:8000', 'https://easy-interview.onrender.com')
+        join_url = join_url.replace('http://localhost:8000', 'https://easy-interview.onrender.com')
     
-    # MOBILE FIX: If using 127.0.0.1 or localhost, replace with actual local IP
-    # so the link works when clicked on a mobile phone (same Wi-Fi)
-    import socket
-    try:
-        current_host = request.get_host().split(':')[0]
-        if current_host in ['127.0.0.1', 'localhost']:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80)) # Doesn't actually send data
-            local_ip = s.getsockname()[0]
-            s.close()
-            join_url = join_url.replace(current_host, local_ip)
-    except Exception:
-        pass
+    # Ensure it uses HTTPS for the live site
+    if 'onrender.com' in join_url:
+        join_url = join_url.replace('http://', 'https://')
 
     # Format date for email
     scheduled_time = room.scheduled_at.strftime("%B %d, %Y at %I:%M %p") if room.scheduled_at else "TBD"
