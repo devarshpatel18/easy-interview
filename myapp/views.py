@@ -1530,8 +1530,8 @@ def send_room_invite(request, room_id):
               f"Best regards,\nThe Easy Interview Team"
 
     email_thread = threading.Thread(
-        target=_send_otp_email,
-        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email]),
+        target=send_mail,
+        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], False),
         daemon=True,
     )
     email_thread.start()
