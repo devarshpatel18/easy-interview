@@ -171,8 +171,8 @@ def _send_otp_email(subject, message, from_email, recipient_list):
     """Send OTP email in a background thread for instant user response."""
     try:
         send_mail(subject, message, from_email, recipient_list, fail_silently=False)
-    except Exception:
-        pass  # Email failure is logged; user can resend from the verify page
+    except Exception as e:
+        print(f"EMAIL ERROR: {e}")  # Logging the error for debugging on Render
 
 def forgot_password(request):
     if request.user.is_authenticated:
