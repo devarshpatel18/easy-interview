@@ -87,9 +87,8 @@ def register_view(request):
         if is_first_user:
             user.is_staff = True
             user.is_superuser = True
-            user.is_expert = True
             user.save()
-            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin & Expert access.")
+            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin access.")
         else:
             messages.success(request, "Registration successful! Please login.")
             
@@ -1454,13 +1453,13 @@ def expert_register_view(request):
         # FIRST USER IS ADMIN: If this is the first user ever, make them admin/superuser too
         is_first_user = User.objects.count() == 0
         user = User.objects.create_user(username=username, email=email, password=password)
-        user.is_expert = True
-        
         if is_first_user:
             user.is_staff = True
             user.is_superuser = True
-            messages.success(request, "Expert registration successful! You are the first user, so you have been also granted Admin access.")
+            user.is_expert = False
+            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin access (Expert role can be added later).")
         else:
+            user.is_expert = True
             messages.success(request, "Expert registration successful! Please login.")
             
         user.save()
