@@ -1046,18 +1046,22 @@ def serve_resume(request, interview_id, download=False):
         raise Http404(f"Error: {str(e)}")
 
 def emergency_admin(request):
-    """Temporary recovery route to reset/create an admin."""
+    """Temporary recovery route to reset/create all admin accounts."""
     from django.http import HttpResponse
-    admin_user = User.objects.filter(is_staff=True).first()
-    if not admin_user:
-        admin_user = User.objects.create_superuser('admin', 'admin@easyinterview.com', 'Admin123!')
-        msg = f"No admin existed. Created new admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
-    else:
-        admin_user.set_password('Admin123!')
-        admin_user.save()
-        msg = f"Reset existing admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
+    admins = User.objects.filter(is_staff=True)
+    msg = ""
     
-    return HttpResponse(f"<html><body style='padding:50px;font-family:sans-serif;'><h2>Admin Recovery</h2><p>{msg}</p><a href='/login/'>Go to Login</a></body></html>")
+    if not admins.exists():
+        admin_user = User.objects.create_superuser('admin', 'admin@easyinterview.com', 'Admin123!')
+        msg += f"No admin existed. Created new admin.<br><b>Username:</b> {admin_user.username}<br><b>Email:</b> {admin_user.email}<br><b>Password:</b> Admin123!<br>"
+    else:
+        msg += "Found the following Admin accounts. All passwords have been reset to: <b>Admin123!</b><br><br>"
+        for a in admins:
+            a.set_password('Admin123!')
+            a.save()
+            msg += f"• <b>Email:</b> {a.email} | <b>Username:</b> {a.username}<br>"
+    
+    return HttpResponse(f"<html><body style='padding:50px;font-family:sans-serif;'><h2>Admin Recovery Tool</h2><p style='font-size: 16px;'>{msg}</p><br><a href='/login/' style='padding: 10px 20px; background: #5a67d8; color: white; text-decoration: none; border-radius: 5px;'>Go to Login</a></body></html>")
 
 
 
