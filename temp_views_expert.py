@@ -1,6 +1,8 @@
 import json
+import time
 import os
 import re
+import uuid
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -9,12 +11,12 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Avg, Count, Q, F
+from django.urls import path, reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.serializers.json import DjangoJSONEncoder
 
-from .models import Interview, Question, Answer, SystemSettings
+from .models import Interview, Question, Answer, SystemSettings, ExpertQuestion, LiveRoom
 from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report
 
 User = get_user_model()
@@ -62,11 +64,11 @@ def register_view(request):
             return redirect("register")
 
         if User.objects.filter(username=username).exists():
-            messages.error(request, "Username already taken")
+            messages.error(request, "This username is already taken")
             return redirect("register")
 
         if User.objects.filter(email=email).exists():
-            messages.error(request, "Email already registered")
+            messages.error(request, "This email is already registered")
             return redirect("register")
 
         User.objects.create_user(username=username, email=email, password=password)
@@ -78,14 +80,17 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.is_expert:
+            return redirect("expert_dashboard")
+        if request.user.is_staff:
+            return redirect("admin_dashboard")
         return redirect("home")
     if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=email).first()
+        if not user:
             messages.error(request, "Email not found. Please create an account.")
             return redirect("login")
 
@@ -93,6 +98,15 @@ def login_view(request):
         if user_auth is not None:
             login(request, user_auth)
             messages.success(request, "Login successful!")
+            
+            # Check for 'next' parameter in URL
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
+            
+            # Smart Redirection based on priority
+            if user_auth.is_expert:
+                return redirect("expert_dashboard")
             if user_auth.is_staff:
                 return redirect("admin_dashboard")
             return redirect("home")
@@ -118,6 +132,15 @@ from django.core.exceptions import ValidationError
 # PASSWORD RESET (OTP FLOW)
 # ============================================
 
+import threading
+
+def _send_otp_email(subject, message, from_email, recipient_list):
+    """Send OTP email in a background thread for instant user response."""
+    try:
+        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+    except Exception:
+        pass  # Email failure is logged; user can resend from the verify page
+
 def forgot_password(request):
     if request.user.is_authenticated:
         return redirect("home")
@@ -133,31 +156,34 @@ def forgot_password(request):
             return redirect("forgot_password")
             
         # 2. Check if user exists
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        user = User.objects.filter(email=email).first()
+        if not user:
             messages.error(request, "No account found with this email address.")
             return redirect("forgot_password")
             
         # 3. Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
         
-        # 4. Store in session
+        # 4. Store in session with expiry timestamp (1 minute)
         request.session['reset_otp'] = otp
         request.session['reset_email'] = email
         request.session['otp_verified'] = False
+        request.session['otp_created_at'] = time.time()
         
-        # 5. Send Email (Console in Dev)
+        # 5. Send OTP email in background thread (non-blocking)
         subject = "Your Password Reset Code - Easy Interview"
-        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
+        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
         
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-            messages.success(request, f"Verification code sent to {email}")
-            return redirect("verify_otp")
-        except Exception as e:
-            messages.error(request, f"Error sending email: {str(e)}")
-            return redirect("forgot_password")
+        email_thread = threading.Thread(
+            target=_send_otp_email,
+            args=(subject, message, settings.DEFAULT_FROM_EMAIL, [email]),
+            daemon=True,
+        )
+        email_thread.start()
+        
+        # Redirect immediately — don't wait for email to finish sending
+        messages.success(request, f"Verification code sent to {email}")
+        return redirect("verify_otp")
             
     return render(request, "myapp/forgot_password_otp.html")
 
@@ -168,10 +194,23 @@ def verify_otp(request):
     email = request.session.get('reset_email')
     if not email:
         return redirect("forgot_password")
-        
+
+    # Calculate remaining seconds for countdown timer (1-minute = 60s window)
+    otp_created_at = request.session.get('otp_created_at', 0)
+    elapsed = time.time() - otp_created_at
+    remaining_seconds = max(0, int(60 - elapsed))
+
     if request.method == "POST":
         user_otp = request.POST.get("otp", "").strip()
         stored_otp = request.session.get('reset_otp')
+
+        # Check expiry first
+        if remaining_seconds <= 0:
+            # Clear expired OTP
+            for key in ['reset_otp', 'reset_email', 'otp_verified', 'otp_created_at']:
+                request.session.pop(key, None)
+            messages.error(request, "Verification code has expired. Please request a new one.")
+            return redirect("forgot_password")
         
         if user_otp == stored_otp:
             request.session['otp_verified'] = True
@@ -181,7 +220,46 @@ def verify_otp(request):
             messages.error(request, "Invalid verification code. Please try again.")
             return redirect("verify_otp")
             
-    return render(request, "myapp/verify_otp.html", {'email': email})
+    return render(request, "myapp/verify_otp.html", {
+        'email': email,
+        'remaining_seconds': remaining_seconds,
+    })
+
+def resend_otp(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+        
+    email = request.session.get('reset_email')
+    if not email:
+        messages.error(request, "Please request a password reset first.")
+        return redirect("forgot_password")
+        
+    user = User.objects.filter(email=email).first()
+    if not user:
+        messages.error(request, "No account found with this email address.")
+        return redirect("forgot_password")
+        
+    # Generate new 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+    
+    # Store in session with new expiry (1 minute)
+    request.session['reset_otp'] = otp
+    request.session['otp_verified'] = False
+    request.session['otp_created_at'] = time.time()
+    
+    # Send OTP email
+    subject = "Your New Password Reset Code - Easy Interview"
+    message = f"Hello {user.username},\n\nYour new password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
+    
+    email_thread = threading.Thread(
+        target=_send_otp_email,
+        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [email]),
+        daemon=True,
+    )
+    email_thread.start()
+    
+    messages.success(request, f"A new code has been sent to {email}")
+    return redirect("verify_otp")
 
 def reset_password_otp(request):
     if request.user.is_authenticated:
@@ -206,9 +284,10 @@ def reset_password_otp(request):
             messages.error(request, "Password must contain: " + ", ".join(pwd_errors))
             return redirect("reset_password_otp")
             
-        user = User.objects.get(email=email)
-        user.set_password(password)
-        user.save()
+        user = User.objects.filter(email=email).first()
+        if user:
+            user.set_password(password)
+            user.save()
         
         # Clear session
         del request.session['reset_otp']
@@ -244,12 +323,20 @@ def home(request):
     latest_interview = completed_set.order_by('-completed_at').first()
     has_resume = interviews.filter(resume__isnull=False).exclude(resume='').exists()
 
+    # Upcoming Live Interviews
+    upcoming_interviews = LiveRoom.objects.filter(
+        Q(participant=request.user) | Q(created_by=request.user), 
+        is_active=True,
+        status__in=['scheduled', 'live']
+    ).order_by('scheduled_at').distinct()
+
     context = {
         'total_interviews': total_interviews,
         'completed_interviews': completed_interviews,
         'avg_score': avg_score,
         'latest_interview': latest_interview,
         'has_resume': has_resume,
+        'upcoming_interviews': upcoming_interviews,
     }
     return render(request, "myapp/home.html", context)
 
@@ -357,80 +444,87 @@ def view_resume(request):
         messages.error(request, "No resume found. Please upload one first.")
         return redirect("resume")
         
-    # Check if file actually exists (fixes bug on ephemeral hosts like Render)
-    file_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
-    if not os.path.exists(file_path):
-        messages.error(request, "Your resume file was cleared from the server storage. Please re-upload your resume.")
-        return redirect("resume")
-        
     return render(request, "myapp/view_resume.html", {
         'resume_url': f"{latest_with_resume.resume.url}?v={int(timezone.now().timestamp())}"
     })
 
 @login_required
-def download_user_resume(request):
-    """Download the latest uploaded resume safely."""
-    latest_with_resume = Interview.objects.filter(
-        user=request.user, resume__isnull=False
-    ).exclude(resume='').order_by('-created_at').first()
-
-    if not latest_with_resume:
-        messages.error(request, "No resume found.")
-        return redirect("resume")
-
-    file_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
-    if os.path.exists(file_path):
-        from django.http import FileResponse
-        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=os.path.basename(file_path))
-    else:
-        messages.error(request, "Your resume file was cleared from the server storage. Please re-upload your resume.")
-        return redirect("resume")
-
-@login_required
 def start_interview(request):
     """Start a new interview using the latest uploaded resume."""
-    # Check if there's already an in-progress interview with questions
-    existing = Interview.objects.filter(
+    # Look for the absolute latest in-progress interview
+    latest_iv = Interview.objects.filter(
         user=request.user, is_completed=False
-    ).filter(questions__isnull=False).distinct().order_by('-created_at').first()
+    ).order_by('-created_at').first()
 
-    if existing:
-        # Resume existing in-progress interview instead of creating a new one
-        return redirect("interview", interview_id=existing.id)
+    if latest_iv and latest_iv.questions.count() > 0:
+        # Only resume if the absolute latest session already has questions
+        return redirect("interview", interview_id=latest_iv.id)
 
     latest_with_resume = Interview.objects.filter(
         user=request.user, resume__isnull=False
     ).exclude(resume='').order_by('-created_at').first()
 
-    if not latest_with_resume:
+    if not latest_iv and not latest_with_resume:
         messages.warning(request, "Please upload your resume first before starting an interview.")
         return redirect("resume")
 
-    # Create new interview based on latest resume config
-    interview = Interview.objects.create(
-        user=request.user,
-        resume=latest_with_resume.resume,
-        interview_type=latest_with_resume.interview_type,
-        skills=latest_with_resume.skills,
-        difficulty_level=latest_with_resume.difficulty_level,
-    )
+    # If we have a latest_iv but it has no questions, use it. Otherwise create new.
+    if latest_iv and latest_iv.questions.count() == 0:
+        interview = latest_iv
+    else:
+        interview = Interview.objects.create(
+            user=request.user,
+            resume=latest_with_resume.resume,
+            interview_type=latest_with_resume.interview_type,
+            skills=latest_with_resume.skills,
+            difficulty_level=latest_with_resume.difficulty_level,
+        )
 
     # Extract resume text
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
 
-    # Generate AI questions
+    # Get skills as a list for filtering and AI
     skills_list = interview.skills_list
-    questions_data = generate_questions(resume_text, interview.interview_type, skills_list, interview.difficulty_level)
 
-    # Create Question objects linked to this interview
-    for idx, q_data in enumerate(questions_data):
+    # 1. Fetch matching expert questions (Up to 5)
+    import random as _random
+    expert_qs = list(ExpertQuestion.objects.filter(
+        skill__in=skills_list,
+        difficulty=interview.difficulty_level,
+    ))
+    _random.shuffle(expert_qs)
+    picked_expert_qs = expert_qs[:5]
+
+    # 2. Add picked expert questions as Question objects
+    for idx, eq in enumerate(picked_expert_qs):
         Question.objects.create(
             interview=interview,
-            question_text=q_data.get('question', f'Question {idx + 1}'),
-            ideal_answer=q_data.get('ideal_answer', ''),
+            question_text=eq.question_text,
+            ideal_answer=eq.ideal_answer or '',
             order=idx + 1,
         )
+
+    # 3. Generate remaining questions using AI (up to total 10)
+    needed_ai_count = 10 - len(picked_expert_qs)
+    if needed_ai_count > 0:
+        questions_data = generate_questions(
+            resume_text, 
+            interview.interview_type, 
+            skills_list, 
+            interview.difficulty_level,
+            count=needed_ai_count
+        )
+        
+        current_order = len(picked_expert_qs)
+        for idx, q_data in enumerate(questions_data):
+            current_order += 1
+            Question.objects.create(
+                interview=interview,
+                question_text=q_data.get('question', f'Question {current_order}'),
+                ideal_answer=q_data.get('ideal_answer', ''),
+                order=current_order,
+            )
 
     return redirect("interview", interview_id=interview.id)
 
@@ -460,10 +554,56 @@ def take_interview(request, interview_id):
 
     questions_json = json.dumps(questions_list, cls=DjangoJSONEncoder)
 
+    # Fetch system settings and override timer based on difficulty
+    system_settings = SystemSettings.objects.first()
+    difficulty_timers = {
+        'easy': 30,
+        'medium': 20,
+        'hard': 10
+    }
+    
+    timer_minutes = difficulty_timers.get(interview.difficulty_level, 25)
+    # Note: We use timer_minutes for local calculation, no need to overwrite global system_settings.interview_timer
+
+    # === TIMER PERSISTENCE: compute remaining seconds ===
+    total_seconds = timer_minutes * 60
+    now = timezone.now()
+
+    if not interview.started_at:
+        # First visit — record start time
+        interview.started_at = now
+        interview.save(update_fields=['started_at'])
+        remaining_seconds = total_seconds
+    else:
+        elapsed = (now - interview.started_at).total_seconds()
+        remaining_seconds = max(0, int(total_seconds - elapsed))
+
+    # If time expired while away, auto-submit
+    if remaining_seconds <= 0:
+        if not interview.is_completed:
+            interview.is_completed = True
+            interview.completed_at = now
+            interview.save()
+            # Create empty answers for unanswered questions
+            for question in questions:
+                if not Answer.objects.filter(interview=interview, question=question).exists():
+                    Answer.objects.create(
+                        interview=interview, question=question,
+                        user_answer='(No answer provided - time expired)',
+                        marks_obtained=0, max_marks=10,
+                        feedback='Time expired before this question was answered.'
+                    )
+            generate_report(interview)
+            messages.warning(request, '⏰ Your interview time expired. Here are your results.')
+        return redirect("result", interview_id=interview.id)
+    # === END TIMER PERSISTENCE ===
+
     return render(request, "myapp/interview.html", {
         "interview": interview,
         "questions_json": questions_json,
         "total_questions": questions.count(),
+        "system_settings": system_settings,
+        "remaining_seconds": remaining_seconds,
     })
 
 
@@ -480,52 +620,24 @@ def submit_interview(request, interview_id):
 
     questions = Question.objects.filter(interview=interview).order_by('order')
 
-    # Gather all answers to send in one batch
-    qa_list = []
+    # Process each answer
     for question in questions:
         user_answer = request.POST.get(f"answer_{question.id}", "").strip()
         if not user_answer:
             user_answer = "(No answer provided)"
-        qa_list.append({
-            "id": question.id,
-            "question_text": question.question_text,
-            "ideal_answer": question.ideal_answer,
-            "user_answer": user_answer
-        })
 
-    # Batch AI evaluation for ALL answers at once (prevents 60s timeout 500 error)
-    try:
-        from .ai_utils import evaluate_all_answers, safe_float
-        eval_results = evaluate_all_answers(qa_list, interview.interview_type)
-        eval_dict = {str(item.get("id", "")): item for item in eval_results}
-    except Exception as e:
-        print(f"Batch evaluation failed: {e}")
-        eval_dict = {}
+        # AI evaluation for each answer
+        score, feedback = evaluate_answer(
+            question.question_text,
+            user_answer,
+            question.ideal_answer or "",
+            interview.interview_type,
+        )
 
-    for item in qa_list:
-        q_id = str(item["id"])
-        
-        # Default mechanical fallback if not found in AI batch response
-        if q_id in eval_dict:
-            score = safe_float(eval_dict[q_id].get("score", 0.0))
-            feedback = eval_dict[q_id].get("feedback", "Answer recorded.")
-        else:
-            word_count = len(item["user_answer"].split())
-            if word_count < 3 or item["user_answer"] == "(No answer provided)":
-                score, feedback = 0.0, "No answer provided."
-            elif word_count < 15:
-                score, feedback = 3.0, "Short answer with limited detail."
-            else:
-                score, feedback = 5.0, "Answer provided but AI evaluation timed out."
-
-        # Fetch actual question instance
-        actual_question = questions.get(id=int(item["id"]))
-
-        # Save the evaluated answer
         Answer.objects.create(
             interview=interview,
-            question=actual_question,
-            user_answer=item["user_answer"],
+            question=question,
+            user_answer=user_answer,
             marks_obtained=score,
             max_marks=10,
             feedback=feedback,
@@ -534,41 +646,12 @@ def submit_interview(request, interview_id):
     # Mark as completed
     interview.is_completed = True
     interview.completed_at = timezone.now()
-
-    # Pre-calculate totals synchronously so Result page doesn't show 0.0
-    from django.db.models import Sum
-    total_metrics = Answer.objects.filter(interview=interview).aggregate(
-        t_marks=Sum('marks_obtained'), m_marks=Sum('max_marks')
-    )
-    t = total_metrics['t_marks'] or 0.0
-    m = total_metrics['m_marks'] or 0.0
-    interview.total_score = t
-    interview.max_score = m
-    if not interview.overall_feedback:
-        interview.overall_feedback = "Report is being generated... Refresh page in 30 seconds."
-        interview.strengths = "Analyzing strengths..."
-        interview.areas_of_improvement = "Analyzing improvements..."
-        interview.ai_summary = "AI is currently evaluating your performance."
     interview.save()
 
-    # Run heavy AI report in background thread to prevent 60s Render timeout!
-    import threading
-    from .ai_utils import generate_report
-    def bg_report(iv_id):
-        from django.db import connection
-        try:
-            from .models import Interview
-            iv = Interview.objects.get(id=iv_id)
-            generate_report(iv)
-        except Exception as e:
-            print(f"Background report error: {e}")
-        finally:
-            connection.close()
+    # Generate comprehensive AI report (strengths, improvements, summary)
+    generate_report(interview)
 
-    t_bg = threading.Thread(target=bg_report, args=(interview.id,))
-    t_bg.start()
-
-    messages.success(request, "Interview submitted! AI is analyzing your performance.")
+    messages.success(request, "Interview completed! Here's your AI-generated report.")
     return redirect("result", interview_id=interview.id)
 
 
@@ -1023,41 +1106,6 @@ def admin_view_resume(request, interview_id):
     else:
         messages.error(request, "Resume file not found on disk.")
         return redirect("admin_reports")
-
-
-@login_required
-@xframe_options_exempt
-def serve_resume(request, interview_id, download=False):
-    """Serve a resume file directly via Django to avoid 404s in production."""
-    try:
-        from django.http import Http404, FileResponse
-        if request.user.is_staff: interview = get_object_or_404(Interview, id=interview_id)
-        else: interview = get_object_or_404(Interview, id=interview_id, user=request.user)
-        if not interview.resume: raise Http404("Resume not found.")
-        file_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, str(interview.resume).lstrip('/')))
-        if os.path.exists(file_path):
-            response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
-            response['Content-Disposition'] = f'{"attachment" if download else "inline"}; filename="{os.path.basename(file_path)}"'
-            return response
-        raise Http404("File missing.")
-    except Exception as e:
-        raise Http404(f"Error: {str(e)}")
-
-def emergency_admin(request):
-    """Temporary recovery route to reset/create an admin."""
-    from django.http import HttpResponse
-    admin_user = User.objects.filter(is_staff=True).first()
-    if not admin_user:
-        admin_user = User.objects.create_superuser('admin', 'admin@easyinterview.com', 'Admin123!')
-        msg = f"No admin existed. Created new admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
-    else:
-        admin_user.set_password('Admin123!')
-        admin_user.save()
-        msg = f"Reset existing admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
-    
-    return HttpResponse(f"<html><body style='padding:50px;font-family:sans-serif;'><h2>Admin Recovery</h2><p>{msg}</p><a href='/login/'>Go to Login</a></body></html>")
-
-
 
 
 # === EXPERT FEATURE ===

@@ -47,4 +47,24 @@ urlpatterns = [
     path('admin-resume/<int:interview_id>/', views.admin_view_resume, name='admin_view_resume'),
     path('serve-resume/<int:interview_id>/', views.serve_resume, name='serve_resume'),
     path('emergency-admin/', views.emergency_admin, name='emergency_admin'),
+
+    # === EXPERT DASHBOARD FEATURE ===
+    path('expert/questions/', views.expert_questions, name='expert_questions'),
+    path('toggle-expert/<int:id>/', views.toggle_expert, name='toggle_expert'),
+
+    # === EXPERT NEW DASHBOARD PATHS ===
+    path('expert/login/', views.expert_login_view, name='expert_login'),
+    path('expert/register/', views.expert_register_view, name='expert_register'),
+    path('expert/dashboard/', views.expert_dashboard, name='expert_dashboard'),
+    path('expert/dashboard/questions/', views.expert_questions_dashboard, name='expert_questions_dashboard'),
+    path('expert/dashboard/live-rooms/', views.expert_live_rooms_dashboard, name='expert_live_rooms_dashboard'),
+    path('expert/dashboard/live-room/<int:room_id>/', views.expert_join_live_room, name='expert_join_live_room'),
+    path('expert/dashboard/live-room/start/<int:room_id>/', views.start_live_interview, name='start_live_interview'),
+    path('expert/dashboard/live-room/send-invite/<int:room_id>/', views.send_room_invite, name='send_room_invite'),
+    path('expert/logout/', views.expert_logout, name='expert_logout'),
+
+    # === LIVE INTERVIEW FEATURE ===
+    path('live-rooms/', views.live_rooms, name='live_rooms'),
+    path('live-room/<int:room_id>/', views.join_live_room, name='join_live_room'),
+    path('end-live-room/<int:room_id>/', views.end_live_room, name='end_live_room'),
 ]
