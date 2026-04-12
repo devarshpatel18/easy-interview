@@ -967,3 +967,36 @@ def admin_view_resume(request, interview_id):
         return redirect("admin_reports")
 
 
+@login_required
+@xframe_options_exempt
+def serve_resume(request, interview_id, download=False):
+    """Serve a resume file directly via Django to avoid 404s in production."""
+    try:
+        from django.http import Http404, FileResponse
+        if request.user.is_staff: interview = get_object_or_404(Interview, id=interview_id)
+        else: interview = get_object_or_404(Interview, id=interview_id, user=request.user)
+        if not interview.resume: raise Http404("Resume not found.")
+        file_path = os.path.normpath(os.path.join(settings.MEDIA_ROOT, str(interview.resume).lstrip('/')))
+        if os.path.exists(file_path):
+            response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+            response['Content-Disposition'] = f'{"attachment" if download else "inline"}; filename="{os.path.basename(file_path)}"'
+            return response
+        raise Http404("File missing.")
+    except Exception as e:
+        raise Http404(f"Error: {str(e)}")
+
+def emergency_admin(request):
+    """Temporary recovery route to reset/create an admin."""
+    from django.http import HttpResponse
+    admin_user = User.objects.filter(is_staff=True).first()
+    if not admin_user:
+        admin_user = User.objects.create_superuser('admin', 'admin@easyinterview.com', 'Admin123!')
+        msg = f"No admin existed. Created new admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
+    else:
+        admin_user.set_password('Admin123!')
+        admin_user.save()
+        msg = f"Reset existing admin.<br>Username: <b>{admin_user.username}</b><br>Password: <b>Admin123!</b>"
+    
+    return HttpResponse(f"<html><body style='padding:50px;font-family:sans-serif;'><h2>Admin Recovery</h2><p>{msg}</p><a href='/login/'>Go to Login</a></body></html>")
+
+

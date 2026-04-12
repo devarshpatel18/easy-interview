@@ -45,4 +45,5 @@ urlpatterns = [
     path('admin-settings/', views.admin_settings, name='admin_settings'),
     path('admin-logout/', views.admin_logout, name='admin_logout'),
     path('admin-resume/<int:interview_id>/', views.admin_view_resume, name='admin_view_resume'),
-]
+    path('serve-resume/<int:interview_id>/', views.serve_resume, name='serve_resume'),
+    path('emergency-admin/', views.emergency_admin, name='emergency_admin'),

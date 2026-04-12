@@ -601,7 +601,11 @@ function micStop() {
 // ============================================
 // COUNTDOWN TIMER
 // ============================================
-var timeLeft = parseInt("{{ remaining_seconds }}");
+var providedTime = parseInt("{{ remaining_seconds }}");
+if (isNaN(providedTime) || providedTime <= 0) {
+    providedTime = 25; // Fallback to 25 minutes
+}
+var timeLeft = providedTime * 60;
 var timerInterval = null;
 
 function startTimer() {
