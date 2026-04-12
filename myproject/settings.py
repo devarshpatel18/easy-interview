@@ -119,7 +119,7 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'deepkevadiya63@gmail.com')
 
 # 👉 Gmail App Password (16 digit) यहाँ डालो
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'wvef jdyr bgko yhzl')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'wvef jdyr bgko yhzl').replace(' ', '')
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 10
