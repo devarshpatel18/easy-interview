@@ -1541,9 +1541,6 @@ def send_room_invite(request, room_id):
 
 def debug_email_sync(request):
     """Diagnostic view to send a test email synchronously and show any errors."""
-    if not request.user.is_staff:
-        return HttpResponse("Admin access required.")
-    
     from django.core.mail import send_mail
     from django.conf import settings
     import traceback
