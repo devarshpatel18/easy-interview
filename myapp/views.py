@@ -19,6 +19,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from .models import Interview, Question, Answer, SystemSettings, ExpertQuestion, LiveRoom
 from django.db.models.functions import Length
 from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report, extract_skills_from_resume
+from .email_utils import send_email_api
 
 def cleanup_bad_data():
     """One-time cleanup to remove garbage questions (shorter than 10 characters)."""
@@ -168,11 +169,9 @@ from django.core.exceptions import ValidationError
 import threading
 
 def _send_otp_email(subject, message, from_email, recipient_list):
-    """Send OTP email in a background thread for instant user response."""
-    try:
-        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
-    except Exception as e:
-        print(f"EMAIL ERROR: {e}")  # Logging the error for debugging on Render
+    """Send OTP email via SendGrid API to avoid Render port blocking."""
+    for recipient in recipient_list:
+        send_email_api(subject, message, recipient)
 
 def forgot_password(request):
     if request.user.is_authenticated:
@@ -1718,13 +1717,13 @@ def send_room_invite(request, room_id):
               f"Please click the link above at the scheduled time to join the session.\n\n" \
               f"Best regards,\nThe Easy Interview Team"
 
-    try:
-        from django.core.mail import send_mail
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], fail_silently=False)
+    # Send email via SendGrid API (Bypasses Render SMTP block)
+    success, error = send_email_api(subject, message, room.participant.email)
+    
+    if success:
         messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
-    except Exception as e:
-        messages.error(request, f"Email Failed: {str(e)}. Please check your Gmail App Password.")
-        print(f"SMTP ERROR: {e}")
+    else:
+        messages.error(request, f"Email Failed: {error}. Please check your SendGrid API Key.")
 
     return redirect("expert_join_live_room", room_id=room.id)
 

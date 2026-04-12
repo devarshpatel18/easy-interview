@@ -134,3 +134,8 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://127.0.0.1:8000,
 # GOOGLE GEMINI API KEY
 # ============================================
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyDa4yft8s4FTsbSvwTMrIUtrl7gzoBnAeM')
+
+# ============================================
+# SENDGRID API KEY (FOR RENDER)
+# ============================================
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
