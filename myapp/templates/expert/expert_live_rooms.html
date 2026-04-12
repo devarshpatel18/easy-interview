@@ -91,19 +91,19 @@
     {% endif %}
 </div>
 
-<!-- Modal: Create Room -->
-<div id="createRoomModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+<!-- Modal: Create Room (Restored Old Design) -->
+<div id="createRoomModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); align-items: center; justify-content: center;">
     <div class="glass-card" style="max-width: 500px; width: 90%; margin: auto; position: relative;">
-        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">🎥 Create Live Interview</h3>
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 24px;">🎥 Create Live Interview</h3>
         <form method="POST">
             {% csrf_token %}
             <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label">Interview Title</label>
-                <input type="text" name="title" class="form-control" placeholder="e.g. Senior Frontend Interview" required>
+                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">INTERVIEW TITLE</label>
+                <input type="text" name="title" class="form-control" placeholder="e.g. Senior Frontend Interview" required style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
             </div>
             <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label">Select Candidate</label>
-                <select name="participant_id" class="form-select" required>
+                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">SELECT CANDIDATE</label>
+                <select name="participant_id" class="form-select" required style="width: 100%; padding: 12px; background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
                     <option value="">-- Choose Candidate --</option>
                     {% for u in users %}
                         <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
@@ -111,13 +111,13 @@
                 </select>
             </div>
             <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label">Scheduled Time</label>
-                <input type="datetime-local" name="scheduled_at" class="form-control" required>
+                <label class="form-label" style="font-size: 13px; color: var(--text-secondary);">SCHEDULED TIME</label>
+                <input type="datetime-local" name="scheduled_at" class="form-control" required style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 8px; color: white;">
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px;">
-                <button type="button" class="btn-outline-glass" onclick="document.getElementById('createRoomModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn-primary-glow">Create Room</button>
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button type="button" class="btn-outline-glass" style="flex:1" onclick="document.getElementById('createRoomModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn-primary-glow" style="flex:1">Create Room</button>
             </div>
         </form>
     </div>
