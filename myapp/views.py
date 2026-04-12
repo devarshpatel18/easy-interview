@@ -1,8 +1,6 @@
 import json
-import time
 import os
 import re
-import uuid
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -11,23 +9,12 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Avg, Count, Q, F
-from django.urls import path, reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 
-from .models import Interview, Question, Answer, SystemSettings, ExpertQuestion, LiveRoom
-from django.db.models.functions import Length
-from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report, extract_skills_from_resume
-from .email_utils import send_email_api
-
-def cleanup_bad_data():
-    """One-time cleanup to remove garbage questions (shorter than 10 characters)."""
-    try:
-        ExpertQuestion.objects.annotate(text_len=Length('question_text')).filter(text_len__lt=10).delete()
-        Question.objects.annotate(text_len=Length('question_text')).filter(text_len__lt=10).delete()
-    except Exception as e:
-        print(f"Cleanup Error: {e}")
+from .models import Interview, Question, Answer, SystemSettings
+from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report
 
 User = get_user_model()
 
@@ -74,25 +61,15 @@ def register_view(request):
             return redirect("register")
 
         if User.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken")
+            messages.error(request, "Username already taken")
             return redirect("register")
 
         if User.objects.filter(email=email).exists():
-            messages.error(request, "This email is already registered")
+            messages.error(request, "Email already registered")
             return redirect("register")
 
-        # FIRST USER IS ADMIN: If this is the first user ever, make them admin/expert
-        is_first_user = User.objects.count() == 0
-        user = User.objects.create_user(username=username, email=email, password=password)
-        
-        if is_first_user:
-            user.is_staff = True
-            user.is_superuser = True
-            user.save()
-            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin access.")
-        else:
-            messages.success(request, "Registration successful! Please login.")
-            
+        User.objects.create_user(username=username, email=email, password=password)
+        messages.success(request, "Registration successful! Please login.")
         return redirect("login")
 
     return render(request, "myapp/register.html")
@@ -100,49 +77,23 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        # AUTO-UPGRADE: If already logged in as admin@gmail.com, ensure staff status
-        if request.user.email and request.user.email.lower() == 'admin@gmail.com':
-            if not request.user.is_staff:
-                request.user.is_staff = True
-                request.user.is_superuser = True
-                request.user.save()
-        
-        if request.user.is_staff:
-            return redirect("admin_dashboard")
-        if request.user.is_expert:
-            return redirect("expert_dashboard")
         return redirect("home")
-
     if request.method == "POST":
-        email = request.POST.get("email", "").strip().lower()
+        email = request.POST.get("email")
         password = request.POST.get("password")
 
-        user = User.objects.filter(email=email).first()
-        if not user:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             messages.error(request, "Email not found. Please create an account.")
             return redirect("login")
 
         user_auth = authenticate(request, username=user.username, password=password)
         if user_auth is not None:
-            # AUTO-UPGRADE ADMIN USER: Ensuring admin@gmail.com always has admin rights
-            if email.lower() == 'admin@gmail.com':
-                user_auth.is_staff = True
-                user_auth.is_superuser = True
-                user_auth.save()
-
             login(request, user_auth)
             messages.success(request, "Login successful!")
-            
-            # Check for 'next' parameter in URL
-            next_url = request.GET.get('next')
-            if next_url:
-                return redirect(next_url)
-            
-            # Smart Redirection based on priority
             if user_auth.is_staff:
                 return redirect("admin_dashboard")
-            if user_auth.is_expert:
-                return redirect("expert_dashboard")
             return redirect("home")
         else:
             messages.error(request, "Incorrect password. Please try again.")
@@ -166,13 +117,6 @@ from django.core.exceptions import ValidationError
 # PASSWORD RESET (OTP FLOW)
 # ============================================
 
-import threading
-
-def _send_otp_email(subject, message, from_email, recipient_list):
-    """Send OTP email via SendGrid API to avoid Render port blocking."""
-    for recipient in recipient_list:
-        send_email_api(subject, message, recipient)
-
 def forgot_password(request):
     if request.user.is_authenticated:
         return redirect("home")
@@ -188,34 +132,31 @@ def forgot_password(request):
             return redirect("forgot_password")
             
         # 2. Check if user exists
-        user = User.objects.filter(email=email).first()
-        if not user:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             messages.error(request, "No account found with this email address.")
             return redirect("forgot_password")
             
         # 3. Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
         
-        # 4. Store in session with expiry timestamp (1 minute)
+        # 4. Store in session
         request.session['reset_otp'] = otp
         request.session['reset_email'] = email
         request.session['otp_verified'] = False
-        request.session['otp_created_at'] = time.time()
         
-        # 5. Send OTP email in background thread (non-blocking)
+        # 5. Send Email (Console in Dev)
         subject = "Your Password Reset Code - Easy Interview"
-        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
+        message = f"Hello {user.username},\n\nYour password reset code is: {otp}\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
         
-        email_thread = threading.Thread(
-            target=_send_otp_email,
-            args=(subject, message, settings.DEFAULT_FROM_EMAIL, [email]),
-            daemon=True,
-        )
-        email_thread.start()
-        
-        # Redirect immediately — don't wait for email to finish sending
-        messages.success(request, f"Verification code sent to {email}")
-        return redirect("verify_otp")
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+            messages.success(request, f"Verification code sent to {email}")
+            return redirect("verify_otp")
+        except Exception as e:
+            messages.error(request, f"Error sending email: {str(e)}")
+            return redirect("forgot_password")
             
     return render(request, "myapp/forgot_password_otp.html")
 
@@ -226,23 +167,10 @@ def verify_otp(request):
     email = request.session.get('reset_email')
     if not email:
         return redirect("forgot_password")
-
-    # Calculate remaining seconds for countdown timer (1-minute = 60s window)
-    otp_created_at = request.session.get('otp_created_at', 0)
-    elapsed = time.time() - otp_created_at
-    remaining_seconds = max(0, int(60 - elapsed))
-
+        
     if request.method == "POST":
         user_otp = request.POST.get("otp", "").strip()
         stored_otp = request.session.get('reset_otp')
-
-        # Check expiry first
-        if remaining_seconds <= 0:
-            # Clear expired OTP
-            for key in ['reset_otp', 'reset_email', 'otp_verified', 'otp_created_at']:
-                request.session.pop(key, None)
-            messages.error(request, "Verification code has expired. Please request a new one.")
-            return redirect("forgot_password")
         
         if user_otp == stored_otp:
             request.session['otp_verified'] = True
@@ -252,46 +180,7 @@ def verify_otp(request):
             messages.error(request, "Invalid verification code. Please try again.")
             return redirect("verify_otp")
             
-    return render(request, "myapp/verify_otp.html", {
-        'email': email,
-        'remaining_seconds': remaining_seconds,
-    })
-
-def resend_otp(request):
-    if request.user.is_authenticated:
-        return redirect("home")
-        
-    email = request.session.get('reset_email')
-    if not email:
-        messages.error(request, "Please request a password reset first.")
-        return redirect("forgot_password")
-        
-    user = User.objects.filter(email=email).first()
-    if not user:
-        messages.error(request, "No account found with this email address.")
-        return redirect("forgot_password")
-        
-    # Generate new 6-digit OTP
-    otp = str(random.randint(100000, 999999))
-    
-    # Store in session with new expiry (1 minute)
-    request.session['reset_otp'] = otp
-    request.session['otp_verified'] = False
-    request.session['otp_created_at'] = time.time()
-    
-    # Send OTP email
-    subject = "Your New Password Reset Code - Easy Interview"
-    message = f"Hello {user.username},\n\nYour new password reset code is: {otp}\n\nThis code will expire in 1 minute.\n\nEnter this code on the website to reset your password.\n\nThanks,\nThe Easy Interview Team"
-    
-    email_thread = threading.Thread(
-        target=_send_otp_email,
-        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [email]),
-        daemon=True,
-    )
-    email_thread.start()
-    
-    messages.success(request, f"A new code has been sent to {email}")
-    return redirect("verify_otp")
+    return render(request, "myapp/verify_otp.html", {'email': email})
 
 def reset_password_otp(request):
     if request.user.is_authenticated:
@@ -316,10 +205,9 @@ def reset_password_otp(request):
             messages.error(request, "Password must contain: " + ", ".join(pwd_errors))
             return redirect("reset_password_otp")
             
-        user = User.objects.filter(email=email).first()
-        if user:
-            user.set_password(password)
-            user.save()
+        user = User.objects.get(email=email)
+        user.set_password(password)
+        user.save()
         
         # Clear session
         del request.session['reset_otp']
@@ -355,20 +243,12 @@ def home(request):
     latest_interview = completed_set.order_by('-completed_at').first()
     has_resume = interviews.filter(resume__isnull=False).exclude(resume='').exists()
 
-    # Upcoming Live Interviews
-    upcoming_interviews = LiveRoom.objects.filter(
-        Q(participant=request.user) | Q(created_by=request.user), 
-        is_active=True,
-        status__in=['scheduled', 'live']
-    ).order_by('scheduled_at').distinct()
-
     context = {
         'total_interviews': total_interviews,
         'completed_interviews': completed_interviews,
         'avg_score': avg_score,
         'latest_interview': latest_interview,
         'has_resume': has_resume,
-        'upcoming_interviews': upcoming_interviews,
     }
     return render(request, "myapp/home.html", context)
 
@@ -459,23 +339,10 @@ def configure_interview(request):
         messages.success(request, "Configuration saved successfully! Click 'Start Interview' to begin.")
         return redirect("home")
 
-    # Extract skills from resume for pre-selection
-    detected_skills = []
-    resume_path = None
-    if filename:
-        resume_path = os.path.join(settings.MEDIA_ROOT, 'resumes', filename)
-    elif latest_with_resume:
-        resume_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
-
-    if resume_path and os.path.exists(resume_path):
-        resume_text = extract_resume_text(resume_path)
-        detected_skills = extract_skills_from_resume(resume_text)
-
     return render(request, "myapp/configure_interview.html", {
         'skill_choices': Interview.SKILL_CHOICES,
         'has_new_upload': bool(filename),
         'latest_resume': latest_with_resume,
-        'detected_skills': detected_skills,
     })
 
 @login_required
@@ -489,102 +356,80 @@ def view_resume(request):
         messages.error(request, "No resume found. Please upload one first.")
         return redirect("resume")
         
+    # Check if file actually exists (fixes bug on ephemeral hosts like Render)
+    file_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
+    if not os.path.exists(file_path):
+        messages.error(request, "Your resume file was cleared from the server storage. Please re-upload your resume.")
+        return redirect("resume")
+        
     return render(request, "myapp/view_resume.html", {
         'resume_url': f"{latest_with_resume.resume.url}?v={int(timezone.now().timestamp())}"
     })
 
 @login_required
+def download_user_resume(request):
+    """Download the latest uploaded resume safely."""
+    latest_with_resume = Interview.objects.filter(
+        user=request.user, resume__isnull=False
+    ).exclude(resume='').order_by('-created_at').first()
+
+    if not latest_with_resume:
+        messages.error(request, "No resume found.")
+        return redirect("resume")
+
+    file_path = os.path.join(settings.MEDIA_ROOT, str(latest_with_resume.resume))
+    if os.path.exists(file_path):
+        from django.http import FileResponse
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=os.path.basename(file_path))
+    else:
+        messages.error(request, "Your resume file was cleared from the server storage. Please re-upload your resume.")
+        return redirect("resume")
+
+@login_required
 def start_interview(request):
     """Start a new interview using the latest uploaded resume."""
-    # Look for the absolute latest in-progress interview
-    latest_iv = Interview.objects.filter(
+    # Check if there's already an in-progress interview with questions
+    existing = Interview.objects.filter(
         user=request.user, is_completed=False
-    ).order_by('-created_at').first()
+    ).filter(questions__isnull=False).distinct().order_by('-created_at').first()
 
-    if latest_iv and latest_iv.questions.count() > 0:
-        # Only resume if the absolute latest session already has questions
-        return redirect("interview", interview_id=latest_iv.id)
+    if existing:
+        # Resume existing in-progress interview instead of creating a new one
+        return redirect("interview", interview_id=existing.id)
 
     latest_with_resume = Interview.objects.filter(
         user=request.user, resume__isnull=False
     ).exclude(resume='').order_by('-created_at').first()
 
-    if not latest_iv and not latest_with_resume:
+    if not latest_with_resume:
         messages.warning(request, "Please upload your resume first before starting an interview.")
         return redirect("resume")
 
-    # If we have a latest_iv but it has no questions, use it. Otherwise create new.
-    if latest_iv and latest_iv.questions.count() == 0:
-        interview = latest_iv
-    else:
-        interview = Interview.objects.create(
-            user=request.user,
-            resume=latest_with_resume.resume,
-            interview_type=latest_with_resume.interview_type,
-            skills=latest_with_resume.skills,
-            difficulty_level=latest_with_resume.difficulty_level,
-        )
+    # Create new interview based on latest resume config
+    interview = Interview.objects.create(
+        user=request.user,
+        resume=latest_with_resume.resume,
+        interview_type=latest_with_resume.interview_type,
+        skills=latest_with_resume.skills,
+        difficulty_level=latest_with_resume.difficulty_level,
+    )
 
     # Extract resume text
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
 
-    # Get skills as a list for filtering and AI
+    # Generate AI questions
     skills_list = interview.skills_list
+    questions_data = generate_questions(resume_text, interview.interview_type, skills_list, interview.difficulty_level)
 
-    # Get all previously seen questions for this user to avoid repeats
-    # Normalize by stripping whitespace and converting to lowercase for robust matching
-    seen_qs_raw = list(Question.objects.filter(
-        interview__user=request.user
-    ).values_list('question_text', flat=True))
-    seen_questions = [q.strip().lower() for q in seen_qs_raw if q]
-
-    # 1. Fetch matching expert questions (Up to 5, excluding junk ones)
-    import random as _random
-    all_expert_qs = list(ExpertQuestion.objects.filter(
-        skill__in=skills_list,
-        difficulty=interview.difficulty_level,
-    ).annotate(text_len=Length('question_text')).filter(text_len__gte=10))
-    
-    # Filter out seen ones manually for better matching (case-insensitive)
-    available_expert_qs = [
-        eq for eq in all_expert_qs 
-        if eq.question_text.strip().lower() not in seen_questions
-    ]
-    
-    _random.shuffle(available_expert_qs)
-    picked_expert_qs = available_expert_qs[:5]
-
-    # 2. Add picked expert questions as Question objects
-    for idx, eq in enumerate(picked_expert_qs):
+    # Create Question objects linked to this interview
+    for idx, q_data in enumerate(questions_data):
         Question.objects.create(
             interview=interview,
-            question_text=eq.question_text,
-            ideal_answer=eq.ideal_answer or '',
+            question_text=q_data.get('question', f'Question {idx + 1}'),
+            ideal_answer=q_data.get('ideal_answer', ''),
             order=idx + 1,
         )
-
-    # 3. Generate remaining questions using AI (up to total 10)
-    needed_ai_count = 10 - len(picked_expert_qs)
-    if needed_ai_count > 0:
-        questions_data = generate_questions(
-            resume_text, 
-            interview.interview_type, 
-            skills_list, 
-            interview.difficulty_level,
-            count=needed_ai_count,
-            seen_questions=seen_questions # Pass seen list to AI
-        )
-        
-        current_order = len(picked_expert_qs)
-        for idx, q_data in enumerate(questions_data):
-            current_order += 1
-            Question.objects.create(
-                interview=interview,
-                question_text=q_data.get('question', f'Question {current_order}'),
-                ideal_answer=q_data.get('ideal_answer', ''),
-                order=current_order,
-            )
 
     return redirect("interview", interview_id=interview.id)
 
@@ -614,56 +459,10 @@ def take_interview(request, interview_id):
 
     questions_json = json.dumps(questions_list, cls=DjangoJSONEncoder)
 
-    # Fetch system settings and override timer based on difficulty
-    system_settings = SystemSettings.objects.first()
-    difficulty_timers = {
-        'easy': 30,
-        'medium': 20,
-        'hard': 10
-    }
-    
-    timer_minutes = difficulty_timers.get(interview.difficulty_level, 25)
-    # Note: We use timer_minutes for local calculation, no need to overwrite global system_settings.interview_timer
-
-    # === TIMER PERSISTENCE: compute remaining seconds ===
-    total_seconds = timer_minutes * 60
-    now = timezone.now()
-
-    if not interview.started_at:
-        # First visit — record start time
-        interview.started_at = now
-        interview.save(update_fields=['started_at'])
-        remaining_seconds = total_seconds
-    else:
-        elapsed = (now - interview.started_at).total_seconds()
-        remaining_seconds = max(0, int(total_seconds - elapsed))
-
-    # If time expired while away, auto-submit
-    if remaining_seconds <= 0:
-        if not interview.is_completed:
-            interview.is_completed = True
-            interview.completed_at = now
-            interview.save()
-            # Create empty answers for unanswered questions
-            for question in questions:
-                if not Answer.objects.filter(interview=interview, question=question).exists():
-                    Answer.objects.create(
-                        interview=interview, question=question,
-                        user_answer='(No answer provided - time expired)',
-                        marks_obtained=0, max_marks=10,
-                        feedback='Time expired before this question was answered.'
-                    )
-            generate_report(interview)
-            messages.warning(request, '⏰ Your interview time expired. Here are your results.')
-        return redirect("result", interview_id=interview.id)
-    # === END TIMER PERSISTENCE ===
-
     return render(request, "myapp/interview.html", {
         "interview": interview,
         "questions_json": questions_json,
         "total_questions": questions.count(),
-        "system_settings": system_settings,
-        "remaining_seconds": remaining_seconds,
     })
 
 
@@ -754,21 +553,10 @@ def retry_interview(request, interview_id=None):
         skills=source.skills,
     )
 
-    # Get all previously seen questions for this user to avoid repeats
-    seen_qs_raw = list(Question.objects.filter(
-        interview__user=request.user
-    ).values_list('question_text', flat=True))
-    seen_questions_normalized = [q.strip().lower() for q in seen_qs_raw if q]
-
     # Extract resume and generate fresh questions
     resume_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     resume_text = extract_resume_text(resume_path)
-    questions_data = generate_questions(
-        resume_text, 
-        interview.interview_type, 
-        interview.skills_list,
-        seen_questions=seen_qs_raw # Pass raw list to AI for context
-    )
+    questions_data = generate_questions(resume_text, interview.interview_type, interview.skills_list)
 
     for idx, q_data in enumerate(questions_data):
         Question.objects.create(
@@ -955,53 +743,6 @@ def update_profile(request):
 def admin_dashboard(request):
     if not request.user.is_staff:
         return redirect("home")
-
-    # Clean up garbage data (shorter than 10 chars) automatically
-    cleanup_bad_data()
-
-    # Handle demo data generation if requested
-    if request.GET.get('generate_demo') == 'true':
-        import random
-        from datetime import timedelta
-        try:
-            # 1. Clear old demo data to make room for new users
-            Interview.objects.filter(skills="Demo Data").delete()
-
-            # 2. Ensure demo users exist
-            demo_names = ['devarsh', 'het', 'jeel']
-            demo_users = []
-            for name in demo_names:
-                d_user, created = User.objects.get_or_create(
-                    username=name, 
-                    defaults={'email': f'{name}@example.com'}
-                )
-                if created:
-                    d_user.set_password('Demo@123')
-                    d_user.save()
-                demo_users.append(d_user)
-
-            # 3. Create a few test interviews with diverse scores
-            # Low (20%), Mid (55%), High (85%)
-            score_targets = [0.2, 0.2, 0.55, 0.55, 0.55, 0.85] 
-            for target_pct in score_targets:
-                max_score = 100
-                total_score = int(max_score * (target_pct + random.uniform(-0.05, 0.05)))
-                Interview.objects.create(
-                    user=random.choice(demo_users),
-                    interview_type=random.choice(['technical', 'hr']),
-                    is_completed=True,
-                    total_score=total_score,
-                    max_score=max_score,
-                    completed_at=timezone.now() - timedelta(days=random.randint(0, 5)),
-                    skills="Demo Data",
-                    strengths="• Good effort in demo\n• Clear communication",
-                    areas_of_improvement="• Improve depth\n• Practice timing",
-                    ai_summary="This is an automatically generated demo interview."
-                )
-            messages.success(request, "🎉 Dashboard cleared and refreshed with new data for devarsh, het, and jeel!")
-        except Exception as e:
-            messages.error(request, f"Error generating demo data: {e}")
-        return redirect("admin_dashboard")
 
     from datetime import timedelta
 
@@ -1198,7 +939,6 @@ def admin_settings(request):
         settings_obj.allow_registration = 'allow_registration' in request.POST
         settings_obj.interview_timer = request.POST.get("interview_timer", 30)
         settings_obj.maintenance_mode = 'maintenance_mode' in request.POST
-        settings_obj.site_base_url = request.POST.get("site_base_url", "http://127.0.0.1:8000").strip()
         settings_obj.save()
         messages.success(request, "Settings saved successfully!")
     return render(request, "admin/admin_settings.html", {"settings": settings_obj})
@@ -1225,508 +965,5 @@ def admin_view_resume(request, interview_id):
     else:
         messages.error(request, "Resume file not found on disk.")
         return redirect("admin_reports")
-
-
-# === EXPERT FEATURE ===
-# ============================================
-# EXPERT QUESTION BANK VIEWS
-# ============================================
-
-@login_required
-def expert_questions(request):
-    """Expert question bank — list, add, edit, delete."""
-    if not request.user.is_expert and not request.user.is_staff:
-        messages.error(request, "You don't have expert access.")
-        return redirect("home")
-
-    # Handle add / edit / delete via POST
-    if request.method == "POST":
-        action = request.POST.get("action")
-
-        if action == "add":
-            question_text = request.POST.get("question_text", "").strip()
-            ideal_answer = request.POST.get("ideal_answer", "").strip()
-            skill = request.POST.get("skill", "general")
-            difficulty = request.POST.get("difficulty", "medium")
-
-            if not question_text or len(question_text) < 10:
-                messages.error(request, "Question text is too short. Please provide a professional, complete question (min 10 characters).")
-            else:
-                ExpertQuestion.objects.create(
-                    question_text=question_text,
-                    ideal_answer=ideal_answer,
-                    skill=skill,
-                    difficulty=difficulty,
-                    created_by=request.user,
-                )
-                messages.success(request, "Question added successfully!")
-            return redirect("expert_questions")
-
-        elif action == "edit":
-            eq_id = request.POST.get("eq_id")
-            eq = get_object_or_404(ExpertQuestion, id=eq_id)
-            # Only creator or admin can edit
-            if eq.created_by != request.user and not request.user.is_staff:
-                messages.error(request, "You can only edit your own questions.")
-                return redirect("expert_questions")
-
-            eq.question_text = request.POST.get("question_text", eq.question_text).strip()
-            eq.ideal_answer = request.POST.get("ideal_answer", "").strip()
-            eq.skill = request.POST.get("skill", eq.skill)
-            eq.difficulty = request.POST.get("difficulty", eq.difficulty)
-            eq.save()
-            messages.success(request, "Question updated!")
-            return redirect("expert_questions")
-
-        elif action == "delete":
-            eq_id = request.POST.get("eq_id")
-            eq = get_object_or_404(ExpertQuestion, id=eq_id)
-            if eq.created_by != request.user and not request.user.is_staff:
-                messages.error(request, "You can only delete your own questions.")
-                return redirect("expert_questions")
-            eq.delete()
-            messages.success(request, "Question deleted!")
-            return redirect("expert_questions")
-
-    # List questions — experts see their own, admins see all
-    if request.user.is_staff:
-        questions = ExpertQuestion.objects.all()
-    else:
-        questions = ExpertQuestion.objects.filter(created_by=request.user)
-
-    return render(request, "myapp/expert_questions.html", {
-        "questions": questions,
-        "skill_choices": Interview.SKILL_CHOICES,
-        "difficulty_choices": Interview.DIFFICULTY_CHOICES,
-    })
-
-
-def toggle_expert(request, id):
-    """Admin toggles expert status on a user."""
-    if not request.user.is_staff:
-        return redirect("home")
-    user = get_object_or_404(User, id=id)
-    user.is_expert = not user.is_expert
-    user.save()
-    status = "Expert" if user.is_expert else "Regular User"
-    messages.success(request, f"{user.username} is now: {status}")
-    return redirect("view_user", id=user.id)
-
-# === END EXPERT FEATURE ===
-
-
-# === LIVE INTERVIEW FEATURE ===
-# ============================================
-# LIVE VIDEO INTERVIEW ROOMS (JITSI MEET)
-# ============================================
-
-@login_required
-def live_rooms(request):
-    """List live rooms and create new ones."""
-    if request.method == "POST":
-        # Only experts and staff can create rooms
-        if not request.user.is_expert and not request.user.is_staff:
-            messages.error(request, "Only experts can create live rooms.")
-            return redirect("live_rooms")
-
-        title = request.POST.get("title", "Live Interview").strip()
-        participant_id = request.POST.get("participant_id", "").strip()
-        room_name = f"easy-interview-{uuid.uuid4().hex[:12]}"
-
-        room = LiveRoom.objects.create(
-            room_name=room_name,
-            title=title or "Live Interview",
-            created_by=request.user,
-        )
-
-        if participant_id:
-            try:
-                participant = User.objects.get(id=participant_id)
-                room.participant = participant
-                room.save()
-            except User.DoesNotExist:
-                pass
-
-        messages.success(request, f"Room '{room.title}' created! Share the link with your candidate.")
-        return redirect("join_live_room", room_id=room.id)
-
-    # Show relevant rooms
-    if request.user.is_staff or request.user.is_expert:
-        # Experts see rooms they created + active rooms they're invited to
-        my_rooms = LiveRoom.objects.filter(created_by=request.user)
-        invited_rooms = LiveRoom.objects.filter(participant=request.user, is_active=True)
-        rooms = (my_rooms | invited_rooms).distinct()
-    else:
-        # Regular users see rooms they're invited to
-        rooms = LiveRoom.objects.filter(participant=request.user, is_active=True)
-
-    # Get all non-staff users for the participant dropdown
-    users = User.objects.filter(is_staff=False, is_active=True).exclude(id=request.user.id).order_by('username') if (request.user.is_expert or request.user.is_staff) else []
-
-    return render(request, "myapp/live_rooms.html", {
-        "rooms": rooms,
-        "users": users,
-        "is_expert": request.user.is_expert or request.user.is_staff,
-    })
-
-
-@login_required
-def join_live_room(request, room_id):
-    """Join a live room — embedded Jitsi Meet."""
-    room = get_object_or_404(LiveRoom, id=room_id)
-
-    # Only creator, participant, or admin can join
-    if room.created_by != request.user and room.participant != request.user and not request.user.is_staff:
-        expected = room.participant.username if room.participant else "the assigned expert"
-        messages.error(request, f"Access denied. This room is reserved for {expected}. You are currently logged in as {request.user.username}.")
-        return redirect("home")
-
-    return render(request, "myapp/live_room.html", {
-        "room": room,
-    })
-
-
-@login_required
-def end_live_room(request, room_id):
-    """End/deactivate a live room."""
-    room = get_object_or_404(LiveRoom, id=room_id)
-    if room.created_by != request.user and not request.user.is_staff:
-        messages.error(request, "Only the room creator can end this room.")
-        return redirect("expert_dashboard" if request.user.is_expert else "live_rooms")
-
-    room.is_active = False
-    room.save()
-    messages.success(request, "Live room ended.")
-    
-    if request.user.is_expert or request.user.is_staff:
-        return redirect("expert_dashboard")
-    return redirect("live_rooms")
-
-# === END LIVE INTERVIEW FEATURE ===
-
-
-# === EXPERT DASHBOARD FEATURE ===
-# ============================================
-# EXPERT AUTH & DASHBOARD VIEWS
-# ============================================
-
-def expert_login_view(request):
-    """Login page for experts."""
-    if request.user.is_authenticated:
-        if request.user.is_staff and not request.user.is_expert:
-            return redirect("admin_dashboard")
-        if request.user.is_expert or request.user.is_staff:
-            return redirect("expert_dashboard")
-        return redirect("home")
-
-    if request.method == "POST":
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-
-        user = User.objects.filter(email=email).first()
-        if not user:
-            messages.error(request, "Email not found. Please create an expert account.")
-            return redirect("expert_login")
-
-        user_auth = authenticate(request, username=user.username, password=password)
-        if user_auth is not None:
-            # AUTO-UPGRADE ADMIN USER: Ensuring admin@gmail.com always has admin rights
-            if email.lower() == 'admin@gmail.com':
-                user_auth.is_staff = True
-                user_auth.is_superuser = True
-                user_auth.save()
-
-            if not user_auth.is_expert and not user_auth.is_staff:
-                messages.error(request, "This account is not registered as an expert. Please use regular login.")
-                return redirect("expert_login")
-            login(request, user_auth)
-            messages.success(request, "Login successful!")
-            
-            # Priority to Admin Dashboard if staff member
-            if user_auth.is_staff:
-                return redirect("admin_dashboard")
-            return redirect("expert_dashboard")
-        else:
-            messages.error(request, "Incorrect password. Please try again.")
-            return redirect("expert_login")
-
-    return render(request, "myapp/expert_login.html")
-
-
-def expert_register_view(request):
-    """Registration page for experts — sets is_expert=True."""
-    if request.user.is_authenticated:
-        return redirect("home")
-
-    if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        email = request.POST.get("email", "").strip()
-        password = request.POST.get("password")
-        confirm = request.POST.get("confirm")
-
-        if not username or not email or not password:
-            messages.error(request, "All fields are required")
-            return redirect("expert_register")
-
-        if password != confirm:
-            messages.error(request, "Passwords do not match")
-            return redirect("expert_register")
-
-        pwd_errors = validate_password_strength(password)
-        if pwd_errors:
-            messages.error(request, "Password must contain: " + ", ".join(pwd_errors))
-            return redirect("expert_register")
-
-        if User.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken")
-            return redirect("expert_register")
-
-        if User.objects.filter(email=email).exists():
-            messages.error(request, "This email is already registered")
-            return redirect("expert_register")
-
-        # FIRST USER IS ADMIN: If this is the first user ever, make them admin/superuser too
-        is_first_user = User.objects.count() == 0
-        user = User.objects.create_user(username=username, email=email, password=password)
-        if is_first_user:
-            user.is_staff = True
-            user.is_superuser = True
-            user.is_expert = False
-            messages.success(request, "Registration successful! You are the first user, so you have been granted Admin access (Expert role can be added later).")
-        else:
-            user.is_expert = True
-            messages.success(request, "Expert registration successful! Please login.")
-            
-        user.save()
-        return redirect("expert_login")
-
-    return render(request, "myapp/expert_register.html")
-
-
-@login_required
-def expert_dashboard(request):
-    """Expert dashboard home — stats and quick actions."""
-    if not request.user.is_expert and not request.user.is_staff:
-        messages.error(request, "You don't have expert access.")
-        return redirect("home")
-
-    total_questions = ExpertQuestion.objects.filter(created_by=request.user).count()
-    
-    # Assigned Interviews for Expert
-    assigned_interviews = LiveRoom.objects.filter(
-        created_by=request.user, 
-        is_active=True
-    ).order_by('scheduled_at')
-
-    return render(request, "expert/expert_dashboard.html", {
-        "total_questions": total_questions,
-        "assigned_interviews": assigned_interviews,
-    })
-
-
-@login_required
-def expert_questions_dashboard(request):
-    """Expert question bank — rendered inside expert dashboard layout."""
-    if not request.user.is_expert and not request.user.is_staff:
-        messages.error(request, "You don't have expert access.")
-        return redirect("home")
-
-    # Handle add / edit / delete via POST
-    if request.method == "POST":
-        action = request.POST.get("action")
-
-        if action == "add":
-            question_text = request.POST.get("question_text", "").strip()
-            ideal_answer = request.POST.get("ideal_answer", "").strip()
-            skill = request.POST.get("skill", "general")
-            difficulty = request.POST.get("difficulty", "medium")
-
-            if not question_text or len(question_text) < 10:
-                messages.error(request, "Question text is too short. Please provide a professional, complete question (min 10 characters).")
-            else:
-                ExpertQuestion.objects.create(
-                    question_text=question_text,
-                    ideal_answer=ideal_answer,
-                    skill=skill,
-                    difficulty=difficulty,
-                    created_by=request.user,
-                )
-                messages.success(request, "Question added successfully!")
-            return redirect("expert_questions_dashboard")
-
-        elif action == "edit":
-            eq_id = request.POST.get("eq_id")
-            eq = get_object_or_404(ExpertQuestion, id=eq_id)
-            if eq.created_by != request.user and not request.user.is_staff:
-                messages.error(request, "You can only edit your own questions.")
-                return redirect("expert_questions_dashboard")
-
-            eq.question_text = request.POST.get("question_text", eq.question_text).strip()
-            eq.ideal_answer = request.POST.get("ideal_answer", "").strip()
-            eq.skill = request.POST.get("skill", eq.skill)
-            eq.difficulty = request.POST.get("difficulty", eq.difficulty)
-            eq.save()
-            messages.success(request, "Question updated!")
-            return redirect("expert_questions_dashboard")
-
-        elif action == "delete":
-            eq_id = request.POST.get("eq_id")
-            eq = get_object_or_404(ExpertQuestion, id=eq_id)
-            if eq.created_by != request.user and not request.user.is_staff:
-                messages.error(request, "You can only delete your own questions.")
-                return redirect("expert_questions_dashboard")
-            eq.delete()
-            messages.success(request, "Question deleted!")
-            return redirect("expert_questions_dashboard")
-
-    questions = ExpertQuestion.objects.filter(created_by=request.user)
-
-    return render(request, "expert/expert_questions.html", {
-        "questions": questions,
-        "skill_choices": Interview.SKILL_CHOICES,
-        "difficulty_choices": Interview.DIFFICULTY_CHOICES,
-    })
-
-
-@login_required
-def expert_live_rooms_dashboard(request):
-    """Live rooms — rendered inside expert dashboard layout."""
-    if not request.user.is_expert and not request.user.is_staff:
-        messages.error(request, "You don't have expert access.")
-        return redirect("home")
-
-    if request.method == "POST":
-        title = request.POST.get("title", "Live Interview").strip()
-        participant_id = request.POST.get("participant_id", "").strip()
-        scheduled_at = request.POST.get("scheduled_at")
-        room_name = f"easy-interview-{uuid.uuid4().hex[:12]}"
-
-        room = LiveRoom.objects.create(
-            room_name=room_name,
-            title=title or "Live Interview",
-            created_by=request.user,
-            scheduled_at=scheduled_at if scheduled_at else None,
-        )
-
-        if participant_id:
-            try:
-                participant = User.objects.get(id=participant_id)
-                room.participant = participant
-                room.save()
-            except User.DoesNotExist:
-                pass
-
-        messages.success(request, f"Room '{room.title}' created! Share the link with your candidate.")
-        return redirect("expert_join_live_room", room_id=room.id)
-
-    my_rooms = LiveRoom.objects.filter(created_by=request.user)
-    invited_rooms = LiveRoom.objects.filter(participant=request.user, is_active=True)
-    rooms = (my_rooms | invited_rooms).distinct()
-
-    users = User.objects.filter(is_staff=False, is_active=True).exclude(id=request.user.id).order_by('username')
-
-    return render(request, "expert/expert_live_rooms.html", {
-        "rooms": rooms,
-        "users": users,
-    })
-
-
-@login_required
-def expert_join_live_room(request, room_id):
-    """Join a live room — rendered inside expert dashboard layout."""
-    room = get_object_or_404(LiveRoom, id=room_id)
-
-    if room.created_by != request.user and room.participant != request.user and not request.user.is_staff:
-        messages.error(request, "You don't have access to this room.")
-        return redirect("expert_live_rooms_dashboard")
-
-    return render(request, "expert/expert_live_room.html", {
-        "room": room,
-    })
-
-
-@login_required
-def start_live_interview(request, room_id):
-    """Transition a scheduled interview to Live status."""
-    room = get_object_or_404(LiveRoom, id=room_id, created_by=request.user)
-    room.status = 'live'
-    room.save()
-    messages.success(request, f"Interview '{room.title}' is now LIVE.")
-    return redirect("expert_join_live_room", room_id=room.id)
-
-def expert_logout(request):
-    """Logout from expert panel."""
-    logout(request)
-    messages.success(request, "Logged out successfully")
-    return redirect("expert_login")
-
-# === EXPERT DASHBOARD: SEND INVITE ===
-@login_required
-def send_room_invite(request, room_id):
-    """Send an email invitation to the candidate for a live room."""
-    if not request.user.is_expert and not request.user.is_staff:
-        messages.error(request, "Only experts can send invites.")
-        return redirect("expert_dashboard")
-
-    room = get_object_or_404(LiveRoom, id=room_id)
-    if not room.participant:
-        messages.error(request, "No candidate assigned to this room. Please edit the room to add a candidate.")
-        return redirect("expert_join_live_room", room_id=room.id)
-
-    if not room.participant.email:
-        messages.error(request, "Candidate has no email address associated with their account.")
-        return redirect("expert_join_live_room", room_id=room.id)
-
-    # Build join URL
-    # Build join URL
-    settings_obj = SystemSettings.objects.first()
-    join_path = reverse('join_live_room', args=[room.id])
-    
-    if settings_obj and settings_obj.site_base_url and 'http' in settings_obj.site_base_url:
-        # Use the configured public URL (Production)
-        base = settings_obj.site_base_url.rstrip('/')
-        join_url = f"{base}{join_path}"
-    else:
-        # Fallback for dynamic host detection
-        join_url = request.build_absolute_uri(join_path)
-        
-        # Local IP fix (if on local network)
-        import socket
-        try:
-            current_host = request.get_host().split(':')[0]
-            if current_host in ['127.0.0.1', 'localhost', '0.0.0.0']:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                local_ip = s.getsockname()[0]
-                s.close()
-                join_url = join_url.replace(current_host, local_ip)
-        except Exception:
-            pass
-
-    # Format date for email
-    scheduled_time = room.scheduled_at.strftime("%B %d, %Y at %I:%M %p") if room.scheduled_at else "TBD"
-
-    # Send email directly (Synchronous for debugging errors)
-    subject = f"Interview Invitation: {room.title} - Easy Interview"
-    message = f"Hello {room.participant.username},\n\n" \
-              f"You have been invited to a live interview session.\n\n" \
-              f"Interviewer: {request.user.username}\n" \
-              f"Interview Title: {room.title}\n" \
-              f"Scheduled Date & Time: {scheduled_time}\n" \
-              f"Unique Join Link: {join_url}\n\n" \
-              f"Please click the link above at the scheduled time to join the session.\n\n" \
-              f"Best regards,\nThe Easy Interview Team"
-
-    # Send email via SendGrid API (Bypasses Render SMTP block)
-    success, error = send_email_api(subject, message, room.participant.email)
-    
-    if success:
-        messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
-    else:
-        messages.error(request, f"Email Failed: {error}. Please check your BREVO_API_KEY on Render.")
-
-    return redirect("expert_join_live_room", room_id=room.id)
-
-# === END EXPERT DASHBOARD FEATURE ===
 
 

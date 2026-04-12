@@ -10,20 +10,17 @@
     </div>
 </div>
 
-<div class="glass-card animate-in delay-1" style="height: 75vh; padding: 20px; overflow: hidden; border: 1px solid var(--border-glass); position: relative; background: #1e1b4b; border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: center;">
-    <!-- Proper iframe solution with built-in PDF pagination and zoom controls -->
-    <iframe src="{{ resume_url }}#toolbar=1&navpanes=0&view=Fit" width="100%" height="100%" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; position: relative; z-index: 10; background: white; max-width: 900px;">
-
+<div class="glass-card animate-in delay-1" style="height: 75vh; padding: 0; overflow: hidden; border: 1px solid var(--border-glass); position: relative; background: #1e1b4b;">
+    <embed src="{{ resume_url }}" type="application/pdf" width="100%" height="100%" style="border: none;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 80%;">
             <p style="color: var(--text-muted); margin-bottom: 16px;">PDF viewer not supported by your browser.</p>
             <a href="{{ resume_url }}" target="_blank" class="btn-primary-glow btn-sm">Open Resume in New Tab</a>
         </div>
-    </iframe>
+    </embed>
 </div>
 
-
 <div class="text-center mt-4 animate-in delay-2" style="display: flex; gap: 16px; justify-content: center; margin-top: 24px;">
-    <a href="{{ resume_url }}" target="_blank" class="btn-outline-glass btn-lg">
+    <a href="{% url 'download_user_resume' %}" class="btn-outline-glass btn-lg">
         ⬇️ Download PDF
     </a>
     <a href="{% url 'resume' %}" class="btn-primary-glow btn-lg">
