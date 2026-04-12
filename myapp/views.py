@@ -1215,12 +1215,12 @@ def join_live_room(request, room_id):
     """Join a live room — embedded Jitsi Meet."""
     room = get_object_or_404(LiveRoom, id=room_id)
 
-    # Only creator, participant, or admin can join
-    if room.created_by != request.user and room.participant != request.user and not request.user.is_staff:
-        expected = room.participant.username if room.participant else "the assigned expert"
-        messages.error(request, f"Access denied. This room is reserved for {expected}. You are currently logged in as {request.user.username}.")
+    # Access check relaxed: Any logged in user who has the unique ID/link can join.
+    # We only check if the room is active.
+    if not room.is_active and not request.user.is_staff:
+        messages.error(request, "This interview room has already been closed.")
         return redirect("home")
-
+    
     return render(request, "myapp/live_room.html", {
         "room": room,
     })
@@ -1457,8 +1457,9 @@ def expert_join_live_room(request, room_id):
     """Join a live room — rendered inside expert dashboard layout."""
     room = get_object_or_404(LiveRoom, id=room_id)
 
-    if room.created_by != request.user and room.participant != request.user and not request.user.is_staff:
-        messages.error(request, "You don't have access to this room.")
+    # Access check relaxed: Any logged in user who has the unique ID/link can join.
+    if not room.is_active and not request.user.is_staff:
+        messages.error(request, "This interview room has already been closed.")
         return redirect("expert_live_rooms_dashboard")
 
     return render(request, "expert/expert_live_room.html", {
