@@ -534,12 +534,41 @@ def submit_interview(request, interview_id):
     # Mark as completed
     interview.is_completed = True
     interview.completed_at = timezone.now()
+
+    # Pre-calculate totals synchronously so Result page doesn't show 0.0
+    from django.db.models import Sum
+    total_metrics = Answer.objects.filter(interview=interview).aggregate(
+        t_marks=Sum('marks_obtained'), m_marks=Sum('max_marks')
+    )
+    t = total_metrics['t_marks'] or 0.0
+    m = total_metrics['m_marks'] or 0.0
+    interview.total_score = t
+    interview.max_score = m
+    if not interview.overall_feedback:
+        interview.overall_feedback = "Report is being generated... Refresh page in 30 seconds."
+        interview.strengths = "Analyzing strengths..."
+        interview.areas_of_improvement = "Analyzing improvements..."
+        interview.ai_summary = "AI is currently evaluating your performance."
     interview.save()
 
-    # Generate comprehensive AI report (strengths, improvements, summary)
-    generate_report(interview)
+    # Run heavy AI report in background thread to prevent 60s Render timeout!
+    import threading
+    from .ai_utils import generate_report
+    def bg_report(iv_id):
+        from django.db import connection
+        try:
+            from .models import Interview
+            iv = Interview.objects.get(id=iv_id)
+            generate_report(iv)
+        except Exception as e:
+            print(f"Background report error: {e}")
+        finally:
+            connection.close()
 
-    messages.success(request, "Interview completed! Here's your AI-generated report.")
+    t_bg = threading.Thread(target=bg_report, args=(interview.id,))
+    t_bg.start()
+
+    messages.success(request, "Interview submitted! AI is analyzing your performance.")
     return redirect("result", interview_id=interview.id)
 
 
