@@ -336,6 +336,80 @@ Return ONLY a valid JSON object with this exact format (no markdown, no code blo
         return 0.0, "Answer too short to evaluate meaningfully."
 
 
+def safe_float(val, default_val=0.0):
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default_val
+
+def evaluate_all_answers(qa_list, interview_type):
+    """Batch evaluate all answers in ONE API call to prevent Render timeouts."""
+    if not qa_list: return []
+    
+    prompt = f"Evaluate the following {len(qa_list)} interview answers.\nINTERVIEW TYPE: {interview_type}\n\n"
+    for idx, item in enumerate(qa_list):
+        # We need to sanitize answers just in case they are entirely empty to save tokens
+        clean_ans = item['user_answer'].strip()
+        ans_text = clean_ans if clean_ans and len(clean_ans) > 2 else "(No answer provided)"
+            
+        prompt += f"--- QUESTION {item['id']} ---\n"
+        prompt += f"Q: {item['question_text']}\n"
+        prompt += f"IDEAL: {item.get('ideal_answer', '')}\n"
+        prompt += f"ANS: {ans_text}\n"
+
+    prompt += """
+SCORING CRITERIA (0 to 10 points per answer):
+- Relevance: 3 pts, Depth: 3 pts, Clarity: 2 pts, Accuracy/HR-fit: 2 pts.
+- If the answer is completely missing, irrelevant, or simply says 'no answer', Score must be 0 and feedback must quickly state 'No answer provided'.
+- Never give more than 2 points if the answer is completely irrelevant.
+
+Return ONLY a valid JSON Array with exactly the same number of objects as questions. No markdown, no code blocks. FORMAT:
+[
+  {"id": 12, "score": 7.5, "feedback": "Constructive feedback here"},
+  {"id": 14, "score": 0, "feedback": "No answer provided"}
+]"""
+
+    result = call_gemini(prompt)
+    if result:
+        try:
+            cleaned = result.strip()
+            cleaned = re.sub(r'^```json\s*', '', cleaned)
+            cleaned = re.sub(r'^```\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+            
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError:
+                match = re.search(r'\[\s*\{.*\}\s*\]', cleaned, re.DOTALL)
+                if match: parsed = json.loads(match.group())
+                else: raise
+
+            # Robust unpacking in case AI returned a dict instead of list
+            if isinstance(parsed, dict) and "evaluations" in parsed:
+                parsed = parsed["evaluations"]
+            elif isinstance(parsed, dict):
+                # If it's a dictionary of dictionaries or completely misformatted
+                parsed = list(parsed.values())
+
+            if isinstance(parsed, list):
+                if len(parsed) > 0 and 'score' in parsed[0] and 'feedback' in parsed[0]:
+                    return parsed
+        except Exception as e:
+            print(f"Batch eval parse error: {e}")
+
+    # Fallback to completely mechanical grading if it fails
+    fallback_results = []
+    for item in qa_list:
+        clean_ans = item['user_answer'].strip() if item['user_answer'] else ''
+        wc = len(clean_ans.split())
+        if wc < 3 or clean_ans == "(No answer provided)": score, fb = 0.0, "No answer was provided."
+        elif wc < 15: score, fb = 3.0, "Short answer with limited detail."
+        else: score, fb = 5.0, "Answer provided but could not be AI-evaluated."
+        fallback_results.append({"id": item["id"], "score": score, "feedback": fb})
+    
+    return fallback_results
+
+
 def generate_report(interview):
     """Generate overall interview report using Gemini."""
     from .models import Answer

@@ -480,24 +480,52 @@ def submit_interview(request, interview_id):
 
     questions = Question.objects.filter(interview=interview).order_by('order')
 
-    # Process each answer
+    # Gather all answers to send in one batch
+    qa_list = []
     for question in questions:
         user_answer = request.POST.get(f"answer_{question.id}", "").strip()
         if not user_answer:
             user_answer = "(No answer provided)"
+        qa_list.append({
+            "id": question.id,
+            "question_text": question.question_text,
+            "ideal_answer": question.ideal_answer,
+            "user_answer": user_answer
+        })
 
-        # AI evaluation for each answer
-        score, feedback = evaluate_answer(
-            question.question_text,
-            user_answer,
-            question.ideal_answer or "",
-            interview.interview_type,
-        )
+    # Batch AI evaluation for ALL answers at once (prevents 60s timeout 500 error)
+    try:
+        from .ai_utils import evaluate_all_answers, safe_float
+        eval_results = evaluate_all_answers(qa_list, interview.interview_type)
+        eval_dict = {str(item.get("id", "")): item for item in eval_results}
+    except Exception as e:
+        print(f"Batch evaluation failed: {e}")
+        eval_dict = {}
 
+    for item in qa_list:
+        q_id = str(item["id"])
+        
+        # Default mechanical fallback if not found in AI batch response
+        if q_id in eval_dict:
+            score = safe_float(eval_dict[q_id].get("score", 0.0))
+            feedback = eval_dict[q_id].get("feedback", "Answer recorded.")
+        else:
+            word_count = len(item["user_answer"].split())
+            if word_count < 3 or item["user_answer"] == "(No answer provided)":
+                score, feedback = 0.0, "No answer provided."
+            elif word_count < 15:
+                score, feedback = 3.0, "Short answer with limited detail."
+            else:
+                score, feedback = 5.0, "Answer provided but AI evaluation timed out."
+
+        # Fetch actual question instance
+        actual_question = questions.get(id=int(item["id"]))
+
+        # Save the evaluated answer
         Answer.objects.create(
             interview=interview,
-            question=question,
-            user_answer=user_answer,
+            question=actual_question,
+            user_answer=item["user_answer"],
             marks_obtained=score,
             max_marks=10,
             feedback=feedback,
