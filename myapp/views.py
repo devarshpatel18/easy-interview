@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 import re
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, redirect, get_object_or_404
@@ -14,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.core.serializers.json import DjangoJSONEncoder
 
-from .models import Interview, Question, Answer, SystemSettings
+from .models import Interview, Question, Answer, SystemSettings, ExpertQuestion, LiveRoom
 from .ai_utils import extract_resume_text, generate_questions, evaluate_answer, generate_report
 
 User = get_user_model()
