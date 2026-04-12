@@ -125,10 +125,10 @@ def login_view(request):
                 return redirect(next_url)
             
             # Smart Redirection based on priority
-            if user_auth.is_expert:
-                return redirect("expert_dashboard")
             if user_auth.is_staff:
                 return redirect("admin_dashboard")
+            if user_auth.is_expert:
+                return redirect("expert_dashboard")
             return redirect("home")
         else:
             messages.error(request, "Incorrect password. Please try again.")
