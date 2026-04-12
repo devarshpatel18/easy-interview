@@ -1707,7 +1707,7 @@ def send_room_invite(request, room_id):
     # Format date for email
     scheduled_time = room.scheduled_at.strftime("%B %d, %Y at %I:%M %p") if room.scheduled_at else "TBD"
 
-    # Send email in background
+    # Send email directly (Synchronous for debugging errors)
     subject = f"Interview Invitation: {room.title} - Easy Interview"
     message = f"Hello {room.participant.username},\n\n" \
               f"You have been invited to a live interview session.\n\n" \
@@ -1718,14 +1718,14 @@ def send_room_invite(request, room_id):
               f"Please click the link above at the scheduled time to join the session.\n\n" \
               f"Best regards,\nThe Easy Interview Team"
 
-    email_thread = threading.Thread(
-        target=_send_otp_email,
-        args=(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email]),
-        daemon=True,
-    )
-    email_thread.start()
+    try:
+        from django.core.mail import send_mail
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [room.participant.email], fail_silently=False)
+        messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
+    except Exception as e:
+        messages.error(request, f"Email Failed: {str(e)}. Please check your Gmail App Password.")
+        print(f"SMTP ERROR: {e}")
 
-    messages.success(request, f"Invitation link successfully sent to {room.participant.email}")
     return redirect("expert_join_live_room", room_id=room.id)
 
 # === END EXPERT DASHBOARD FEATURE ===
