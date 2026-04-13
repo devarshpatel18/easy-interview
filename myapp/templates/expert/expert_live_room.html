@@ -37,7 +37,7 @@
     </div>
 
     <!-- Jitsi Meet -->
-    <div id="jitsi-wrapper-main" class="glass-card" style="padding: 0; overflow: hidden; border-radius: 16px;">
+    <div id="jitsi-wrapper-main" class="glass-card live-interview-card" style="padding: 0; overflow: hidden; border-radius: 16px;">
         <div id="jitsi-container" style="width: 100%; height: 600px;"></div>
     </div>
 </div>
@@ -60,6 +60,8 @@
             displayName: '{{ request.user.username|escapejs }}',
             email: '{{ request.user.email|escapejs }}'
         },
+        // Fit for mobile screens
+        height: window.innerWidth < 1024 ? (window.innerHeight * 0.7) : 600,
         configOverwrite: {
             startWithAudioMuted: false,
             startWithVideoMuted: false,

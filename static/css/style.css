@@ -2033,3 +2033,23 @@ body.light-theme .auth-footer {
 .scroll-top-btn:active {
     transform: translateY(-4px) scale(0.95);
 }
+
+/* ===== MOBILE OPTIMIZATIONS (Max fit) ===== */
+@media (max-width: 1024px) {
+    .content-wrapper { 
+        padding: 12px !important; 
+    }
+    .glass-card { 
+        padding: 16px !important; 
+        border-radius: var(--radius-lg); 
+    }
+    /* Maximize space for video calls */
+    .live-interview-card {
+        padding: 0 !important;
+        margin: -12px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        background: #000;
+    }
+}
