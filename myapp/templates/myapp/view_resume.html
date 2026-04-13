@@ -10,51 +10,19 @@
     </div>
 </div>
 
-<div class="glass-card animate-in delay-1" id="pdf-container" style="height: 75vh; padding: 16px; overflow-y: auto; border: 1px solid var(--border-glass); background: #f8fafc; text-align: center;">
-    <div id="pdf-loading" style="color: #0f172a; padding: 20px; font-weight: 600;">Loading Resume...</div>
-    <canvas id="pdf-canvas" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></canvas>
+<div class="glass-card animate-in delay-1" style="height: 75vh; padding: 0; overflow: hidden; border: 1px solid var(--border-glass); position: relative; background: #ffffff;">
+    {% if resume_url %}
+        <!-- Universal Mobile PDF Viewer (Google Docs Engine) -->
+        <iframe src="https://docs.google.com/viewer?url={{ resume_url }}&embedded=true" width="100%" height="100%" style="border: none;">
+            <div style="padding: 40px; text-align: center; background: #111827; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                <p style="color: white; margin-bottom: 20px;">PDF Viewer is loading...</p>
+                <a href="{{ resume_url }}" class="btn-primary-glow btn-sm">Click to Open Directly</a>
+            </div>
+        </iframe>
+    {% else %}
+        <div style="padding: 40px; text-align: center; color: white;">No resume found.</div>
+    {% endif %}
 </div>
-
-<!-- PDF.js library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var url = '{{ resume_url }}';
-
-        var pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-        var loadingTask = pdfjsLib.getDocument(url);
-        loadingTask.promise.then(function(pdf) {
-            document.getElementById('pdf-loading').style.display = 'none';
-            
-            // Only loading first page for preview
-            pdf.getPage(1).then(function(page) {
-                var canvas = document.getElementById('pdf-canvas');
-                var context = canvas.getContext('2d');
-
-                var containerWidth = document.getElementById('pdf-container').clientWidth - 32; 
-                var unscaledViewport = page.getViewport({scale: 1.0});
-                var scale = containerWidth / unscaledViewport.width;
-                if(scale > 2.0) scale = 2.0; 
-
-                var viewport = page.getViewport({scale: scale});
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                var renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                page.render(renderContext);
-            });
-        }, function (reason) {
-            console.error(reason);
-            document.getElementById('pdf-loading').innerText = "Error loading PDF. Please use the Download button below.";
-            document.getElementById('pdf-loading').style.color = "red";
-        });
-    });
-</script>
 
 <div class="text-center mt-4 animate-in delay-2" style="display: flex; gap: 16px; justify-content: center; margin-top: 24px;">
     <a href="{% url 'download_user_resume' %}" class="btn-outline-glass btn-lg">

@@ -366,8 +366,11 @@ def view_resume(request):
         messages.error(request, "Your resume file was cleared from the server storage. Please re-upload your resume.")
         return redirect("resume")
         
+    resume_url = latest_with_resume.resume.url
+    absolute_resume_url = request.build_absolute_uri(resume_url)
+    
     return render(request, "myapp/view_resume.html", {
-        'resume_url': f"{latest_with_resume.resume.url}?v={int(timezone.now().timestamp())}"
+        'resume_url': f"{absolute_resume_url}?v={int(timezone.now().timestamp())}"
     })
 
 @login_required
