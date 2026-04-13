@@ -1024,8 +1024,11 @@ def admin_view_resume(request, interview_id):
 
     file_path = os.path.join(settings.MEDIA_ROOT, str(interview.resume))
     if os.path.exists(file_path):
-        from django.http import FileResponse
-        return FileResponse(open(file_path, 'rb'), as_attachment=False)
+        resume_url = interview.resume.url
+        absolute_resume_url = request.build_absolute_uri(resume_url)
+        return render(request, "myapp/view_resume.html", {
+            'resume_url': f"{absolute_resume_url}?v={int(timezone.now().timestamp())}"
+        })
     else:
         messages.error(request, "Resume file not found on disk.")
         return redirect("admin_reports")

@@ -139,7 +139,7 @@
                 <td style="text-align: right;">
                     <div style="display: flex; gap: 6px; justify-content: flex-end;">
                         {% if report.resume %}
-                            <a href="{% url 'admin_view_resume' report.id %}" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px;" target="_blank" title="View Resume">📄</a>
+                            <a href="{% url 'admin_view_resume' report.id %}" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px;" title="View Resume">📄</a>
                         {% endif %}
                         {% if report.is_completed %}
                             <a href="{% url 'result' report.id %}" class="btn-outline-glass" style="padding: 6px 14px; font-size: 12px; border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">View Report →</a>
