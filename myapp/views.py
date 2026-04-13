@@ -1030,7 +1030,7 @@ def admin_view_resume(request, interview_id):
             'resume_url': f"{absolute_resume_url}?v={int(timezone.now().timestamp())}"
         })
     else:
-        messages.error(request, "Resume file not found on disk.")
+        messages.error(request, "Server Reset: Your resume file was cleared from the temporary storage during the last update. Please re-upload your resume in the user panel.")
         return redirect("admin_reports")
 
 
@@ -1048,7 +1048,7 @@ def serve_resume(request, interview_id, download=False):
             response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
             response['Content-Disposition'] = f'{"attachment" if download else "inline"}; filename="{os.path.basename(file_path)}"'
             return response
-        raise Http404("File missing.")
+        raise Http404("Your resume was cleared from storage during a server update. Please re-upload it.")
     except Exception as e:
         raise Http404(f"Error: {str(e)}")
 
