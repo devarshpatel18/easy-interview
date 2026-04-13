@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Expert Panel | Easy Interview{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=21">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=22">
 </head>
 <body class="admin-body">
 
@@ -58,7 +58,7 @@
         <!-- TOPBAR -->
         <div class="topbar">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('show');">☰</button>
+                <button class="mobile-menu-btn">☰</button>
                 <div class="topbar-title">
                     {% block page_title %}<span>Expert Dashboard</span>{% endblock %}
                 </div>
